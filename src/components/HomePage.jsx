@@ -367,7 +367,7 @@ const HomePage = () => {
       <footer className="py-8 text-center text-gray-600 bg-white/70 backdrop-blur-sm border-t">
         <p>&copy; {new Date().getFullYear()} منصة مهارات التعليمية. جميع الحقوق محفوظة.</p>
         <p className="text-sm">
-          تصميم وتطوير بواسطة Hostinger Horizons ✨
+           تصميم وتطوير بواسطة أ/ محمود جاد مصطفي 
         </p>
       </footer>
     </div>
