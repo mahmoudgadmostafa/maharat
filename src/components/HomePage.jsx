@@ -316,7 +316,7 @@ const HomePage = () => {
                 <CardContent>
                   <Button asChild variant="link" className="text-lg text-blue-600 hover:text-blue-700 p-0">
                     <a href="https://web.facebook.com/maharet.edu" target="_blank" rel="noopener noreferrer">
-                      maharet.edu
+                      "صفحتنا علي الفيس بوك"
                     </a>
                   </Button>
                 </CardContent>
@@ -354,7 +354,7 @@ const HomePage = () => {
                     rel="noopener noreferrer" 
                     className="text-lg text-gray-700 hover:text-teal-600"
                   >
-                    00201060607654
+                 "راسلنا هنا"
                   </a>
                 </CardContent>
               </Card>
