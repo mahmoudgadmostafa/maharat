@@ -7,33 +7,37 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
-import { Users, UserPlus, MessageSquare, Mail, Edit, Eye, Trash2, Send } from 'lucide-react';
+import { Users, UserPlus, MessageSquare, Mail, Edit, Trash2, Send } from 'lucide-react';
 import { auth as studentAuth, db } from '@/lib/firebase';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { doc, setDoc, updateDoc, deleteDoc, collection, addDoc, query, where, orderBy, onSnapshot, Timestamp, serverTimestamp } from 'firebase/firestore';
+import {
+  doc, setDoc, updateDoc, deleteDoc, collection, addDoc,
+  query, where, orderBy, onSnapshot, Timestamp, serverTimestamp,
+  getDocs, getDoc
+} from 'firebase/firestore';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/components/ui/use-toast';
 import { ChatModal } from '@/components/common/ChatModal';
+import { Progress } from '@/components/ui/progress';
 
 export const TeacherStudentsManager = ({ students, onStudentsUpdate }) => {
   const { currentUser } = useAuth();
+
   const [manageStudentOpen, setManageStudentOpen] = useState(false);
   const [editingStudent, setEditingStudent] = useState(null);
   const [studentData, setStudentData] = useState({ name: '', email: '', password: '', group: '' });
   const [selectedGroup, setSelectedGroup] = useState('الكل');
 
-  // === الرسائل
   const [chatModalOpen, setChatModalOpen] = useState(false);
   const [currentTargetUser, setCurrentTargetUser] = useState(null);
   const [messages, setMessages] = useState([]);
   const [allTeacherMessages, setAllTeacherMessages] = useState([]);
   const [messagesIndexReady, setMessagesIndexReady] = useState(false);
-
-  // === رسائل جماعية
   const [massMessageModalOpen, setMassMessageModalOpen] = useState(false);
   const [massMessageContent, setMassMessageContent] = useState('');
+
+  const [processedStudents, setProcessedStudents] = useState([]);
 
   useEffect(() => {
     if (!currentUser) return;
@@ -57,14 +61,48 @@ export const TeacherStudentsManager = ({ students, onStudentsUpdate }) => {
     setMessages(filtered);
   }, [chatModalOpen, currentTargetUser, allTeacherMessages]);
 
-  const openChatWithStudent = (student) => {
-    setCurrentTargetUser(student);
-    setChatModalOpen(true);
-  };
+  useEffect(() => {
+    const fetchStudentProgress = async () => {
+      try {
+        const lessonsSnapshot = await getDocs(collection(db, 'lessons'));
+        const totalLessons = lessonsSnapshot.size;
+
+        const updatedStudents = await Promise.all(
+          students.map(async (student) => {
+            const progressDocRef = doc(db, 'studentProgress', student.id);
+            const progressSnap = await getDoc(progressDocRef);
+
+            let completedLessonsCount = 0;
+            if (progressSnap.exists()) {
+              const data = progressSnap.data();
+              if (Array.isArray(data.completedLessons)) {
+                completedLessonsCount = data.completedLessons.length;
+              }
+            }
+
+            return {
+              ...student,
+              completedLessonsCount,
+              totalLessons,
+            };
+          })
+        );
+
+        setProcessedStudents(updatedStudents);
+      } catch (err) {
+        console.error('خطأ أثناء تحميل بيانات التقدم:', err);
+      }
+    };
+
+    if (students.length > 0) {
+      fetchStudentProgress();
+    }
+  }, [students]);
 
   const handleManageStudent = async (e) => {
     e.preventDefault();
     const { name, email, password, group } = studentData;
+
     if (!name || !email || (!editingStudent && !password)) {
       toast({ title: 'البيانات غير مكتملة', variant: 'destructive' });
       return;
@@ -112,15 +150,16 @@ export const TeacherStudentsManager = ({ students, onStudentsUpdate }) => {
     }
   };
 
-  const groups = ['الكل', ...new Set(students.map(s => s.group || 'بدون مجموعة'))];
-  const filteredStudents = selectedGroup === 'الكل' ? students : students.filter(s => (s.group || 'بدون مجموعة') === selectedGroup);
-
   const handleSendMassMessage = async () => {
-    const targetStudents = selectedGroup === 'الكل' ? students : students.filter(s => (s.group || 'بدون مجموعة') === selectedGroup);
+    const targetStudents = selectedGroup === 'الكل'
+      ? students
+      : students.filter(s => (s.group || 'بدون مجموعة') === selectedGroup);
+
     if (!massMessageContent.trim()) {
       toast({ title: 'يجب كتابة محتوى الرسالة', variant: 'destructive' });
       return;
     }
+
     for (const student of targetStudents) {
       await addDoc(collection(db, 'messages'), {
         participants: [currentUser.uid, student.id].sort(),
@@ -131,23 +170,35 @@ export const TeacherStudentsManager = ({ students, onStudentsUpdate }) => {
         readBy: { [currentUser.uid]: true, [student.id]: false }
       });
     }
+
     toast({ title: 'تم إرسال الرسالة' });
     setMassMessageContent('');
     setMassMessageModalOpen(false);
+  };
+
+  const groups = ['الكل', ...new Set(processedStudents.map(s => s.group || 'بدون مجموعة'))];
+
+  const filteredStudents = selectedGroup === 'الكل'
+    ? processedStudents
+    : processedStudents.filter(s => (s.group || 'بدون مجموعة') === selectedGroup);
+
+  const openChatWithStudent = (student) => {
+    setCurrentTargetUser(student);
+    setChatModalOpen(true);
   };
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8">
       <Card>
         <CardHeader className="flex justify-between items-center">
-          <CardTitle className="flex items-center gap-2">
-            <Users className="w-6 h-6 text-blue-600" /> إدارة الطلاب
-          </CardTitle>
+          <CardTitle className="flex items-center gap-2"><Users className="w-6 h-6 text-blue-600" /> إدارة الطلاب</CardTitle>
           <div className="flex gap-2 items-center">
             <select value={selectedGroup} onChange={(e) => setSelectedGroup(e.target.value)} className="border px-3 py-1 rounded-md text-sm">
               {groups.map(g => <option key={g} value={g}>{g}</option>)}
             </select>
-            <Button variant="outline" onClick={() => setMassMessageModalOpen(true)}><MessageSquare className="w-4 h-4 ml-2" /> رسالة للمجموعة</Button>
+            <Button variant="outline" onClick={() => setMassMessageModalOpen(true)}>
+              <MessageSquare className="w-4 h-4 ml-2" /> رسالة للمجموعة
+            </Button>
             <Dialog open={manageStudentOpen} onOpenChange={(v) => { setManageStudentOpen(v); if (!v) setEditingStudent(null); }}>
               <DialogTrigger asChild>
                 <Button><UserPlus className="w-4 h-4 ml-2" /> {editingStudent ? 'تعديل طالب' : 'إضافة طالب'}</Button>
@@ -172,13 +223,15 @@ export const TeacherStudentsManager = ({ students, onStudentsUpdate }) => {
           ) : (
             <Table>
               <TableHeader>
-                <TableRow>
-                  <TableHead>الاسم</TableHead>
-                  <TableHead>البريد</TableHead>
-                  <TableHead>المجموعة</TableHead>
-                  <TableHead>تاريخ التسجيل</TableHead>
-                  <TableHead className="text-center">الإجراءات</TableHead>
-                </TableRow>
+                <TableRow className="bg-gray-100 text-gray-700 text-sm">
+                <TableHead className="font-semibold text-center">الاسم</TableHead>
+                <TableHead className="font-semibold text-center">البريد الإلكتروني</TableHead>
+                <TableHead className="font-semibold text-center">المجموعة</TableHead>
+                <TableHead className="font-semibold text-center">تاريخ التسجيل</TableHead>
+                <TableHead className="font-semibold text-center">التقدّم</TableHead>
+                <TableHead className="font-semibold text-center">خيارات</TableHead>
+              </TableRow>
+
               </TableHeader>
               <TableBody>
                 {filteredStudents.map(student => (
@@ -186,7 +239,23 @@ export const TeacherStudentsManager = ({ students, onStudentsUpdate }) => {
                     <TableCell>{student.name}</TableCell>
                     <TableCell>{student.email}</TableCell>
                     <TableCell>{student.group || 'بدون مجموعة'}</TableCell>
-                    <TableCell>{student.createdAt ? new Date(student.createdAt.seconds * 1000).toLocaleDateString('ar-EG') : 'غير معروف'}</TableCell>
+                    <TableCell>
+                      {student.createdAt ? new Date(student.createdAt.seconds * 1000).toLocaleDateString('ar-EG') : 'غير معروف'}
+                    </TableCell>
+                    <TableCell>
+                      {typeof student.completedLessonsCount === 'number' && student.totalLessons > 0 ? (
+                        <div className="flex flex-col gap-1">
+                          {student.completedLessonsCount} / {student.totalLessons} دروس مكتملة
+                          <br />
+                          <Progress value={Math.round((student.completedLessonsCount / student.totalLessons) * 100)} />
+                          <div className="text-xs text-muted-foreground text-end">
+                            {Math.round((student.completedLessonsCount / student.totalLessons) * 100)}%
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">لا بيانات</span>
+                      )}
+                    </TableCell>
                     <TableCell className="text-center space-x-1 space-x-reverse">
                       <Button size="sm" onClick={() => openChatWithStudent(student)}><Mail className="w-4 h-4" /></Button>
                       <Button size="sm" onClick={() => handleEditStudent(student)}><Edit className="w-4 h-4" /></Button>
@@ -198,16 +267,12 @@ export const TeacherStudentsManager = ({ students, onStudentsUpdate }) => {
             </Table>
           )}
         </CardContent>
-
         <CardFooter className="text-sm text-muted-foreground">المجموع الكلي: {filteredStudents.length} طالب</CardFooter>
       </Card>
 
-      {/* Modal لإرسال رسالة للمجموعة */}
       <Dialog open={massMessageModalOpen} onOpenChange={setMassMessageModalOpen}>
         <DialogContent>
-          <DialogHeader>
-            <DialogTitle>إرسال رسالة إلى {selectedGroup}</DialogTitle>
-          </DialogHeader>
+          <DialogHeader><DialogTitle>إرسال رسالة إلى {selectedGroup}</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <Label>محتوى الرسالة</Label>
             <Textarea value={massMessageContent} onChange={(e) => setMassMessageContent(e.target.value)} rows={4} />
@@ -235,9 +300,8 @@ export const TeacherStudentsManager = ({ students, onStudentsUpdate }) => {
               readBy: { [currentUser.uid]: true, [currentTargetUser.id]: false }
             });
           }}
-            onDeleteMessages={(deletedIds) => {
-              // حذف الرسائل من الحالة (إذا كنت تحتفظ بها محليًا)
-              setMessages(prev => prev.filter(msg => !deletedIds.includes(msg.id)));
+          onDeleteMessages={(deletedIds) => {
+            setMessages(prev => prev.filter(msg => !deletedIds.includes(msg.id)));
           }}
         />
       )}
