@@ -274,10 +274,10 @@ const HomePage = () => {
               مدعوم بالذكاء الاصطناعي
             </h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto mb-8">
-              استفيد من احدث تطبيقات الذكاء الاصطناعي فى التعليم مع تطبيقات magic school المدمجة في المنصة
+              استفيد من احدث تطبيقات الذكاء الاصطناعي فى التعليم مع التطبيقات  المدمجة في المنصة
             </p>
             <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-8 max-w-4xl mx-auto shadow-2xl">
-              <img  class="w-full h-64 object-cover rounded-xl mb-6" alt="AI-powered learning interface" src="https://images.unsplash.com/photo-1678995635432-d9e89c7a8fc5" />
+              <img  class="w-full h-64 object-cover rounded-xl mb-6" alt="AI-powered learning interface" src="https://i.postimg.cc/7Zkpj4x0/1983.webp" />
               <p className="text-gray-700 text-lg">
                 تجربة تعليمية ذكية تتكيف مع احتياجاتك وتساعدك على تحقيق أهدافك التعليمية بكفاءة عالية
               </p>

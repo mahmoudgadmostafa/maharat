@@ -171,9 +171,9 @@ const StudentHeader = ({ userData, onLogout }) => {
               <div>
                 <h1 className="text-xl font-bold gradient-text-alt">لوحة الطالب</h1>
                 {userData && (
-                  <div className="flex items-center gap-2 text-gray-600 text-xs">
-                    <User className="w-3 h-3" />
-                    <span>{userData.name} ({userData.email})</span>
+                  <div className="flex items-center gap-2 text-xs text-gray-600"><User className="w-3 h-3" /><span>
+                    <span className="bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent font-semibold text-base">{userData.name}</span> {" "}
+                    (<span className="bg-gradient-to-r from-purple-400 to-pink-500 bg-clip-text text-transparent font-medium text-sm">{userData.group} </span>) </span>
                   </div>
                 )}
               </div>

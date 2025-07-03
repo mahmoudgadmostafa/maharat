@@ -1,10 +1,9 @@
-
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { 
-  signInWithEmailAndPassword, 
-  createUserWithEmailAndPassword, 
-  signOut, 
-  onAuthStateChanged 
+import {
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signOut,
+  onAuthStateChanged
 } from 'firebase/auth';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
@@ -29,13 +28,24 @@ export const AuthProvider = ({ children }) => {
     try {
       const result = await signInWithEmailAndPassword(auth, email, password);
       const userDoc = await getDoc(doc(db, 'users', result.user.uid));
+
       if (userDoc.exists()) {
-        setUserRole(userDoc.data().role);
+        const userData = userDoc.data();
+        const mergedUser = {
+          uid: result.user.uid,
+          email: result.user.email,
+          displayName: result.user.displayName || userData.name,
+          ...userData, // يحتوي على role, name, createdAt
+        };
+        setCurrentUser(mergedUser);
+        setUserRole(userData.role);
+
         toast({
           title: "تم تسجيل الدخول بنجاح",
           description: "مرحباً بك في منصة مهارات التعليمية",
         });
-        return userDoc.data().role;
+
+        return userData.role;
       }
     } catch (error) {
       toast({
@@ -49,7 +59,6 @@ export const AuthProvider = ({ children }) => {
 
   const register = async (email, password, role, name) => {
     try {
-      // Check if trying to register as teacher
       if (role === 'teacher') {
         const teacherDoc = await getDoc(doc(db, 'settings', 'teacher'));
         if (teacherDoc.exists() && teacherDoc.data().exists) {
@@ -63,8 +72,7 @@ export const AuthProvider = ({ children }) => {
       }
 
       const result = await createUserWithEmailAndPassword(auth, email, password);
-      
-      // Save user data
+
       await setDoc(doc(db, 'users', result.user.uid), {
         email,
         role,
@@ -72,7 +80,6 @@ export const AuthProvider = ({ children }) => {
         createdAt: new Date().toISOString(),
       });
 
-      // If teacher, mark teacher as existing
       if (role === 'teacher') {
         await setDoc(doc(db, 'settings', 'teacher'), {
           exists: true,
@@ -80,19 +87,29 @@ export const AuthProvider = ({ children }) => {
         });
       }
 
+      const newUser = {
+        uid: result.user.uid,
+        email,
+        displayName: name,
+        role,
+        name,
+      };
+
+      setCurrentUser(newUser);
       setUserRole(role);
+
       toast({
         title: "تم إنشاء الحساب بنجاح",
         description: "مرحباً بك في منصة مهارات التعليمية",
       });
-      
+
       return role;
     } catch (error) {
       toast({
         title: "خطأ في إنشاء الحساب",
-        description: error.message === 'Teacher already exists' ? 
-          "يوجد معلم مسجل بالفعل في المنصة" : 
-          "حدث خطأ أثناء إنشاء الحساب",
+        description: error.message === 'Teacher already exists'
+          ? "يوجد معلم مسجل بالفعل في المنصة"
+          : "حدث خطأ أثناء إنشاء الحساب",
         variant: "destructive",
       });
       throw error;
@@ -102,6 +119,7 @@ export const AuthProvider = ({ children }) => {
   const logout = async () => {
     try {
       await signOut(auth);
+      setCurrentUser(null);
       setUserRole(null);
       toast({
         title: "تم تسجيل الخروج",
@@ -121,9 +139,23 @@ export const AuthProvider = ({ children }) => {
       if (user) {
         const userDoc = await getDoc(doc(db, 'users', user.uid));
         if (userDoc.exists()) {
-          setUserRole(userDoc.data().role);
+          const userData = userDoc.data();
+          const mergedUser = {
+            uid: user.uid,
+            email: user.email,
+            displayName: user.displayName || userData.name,
+            ...userData,
+          };
+          setCurrentUser(mergedUser);
+          setUserRole(userData.role);
+        } else {
+          setCurrentUser({
+            uid: user.uid,
+            email: user.email,
+            displayName: user.displayName,
+          });
+          setUserRole(null);
         }
-        setCurrentUser(user);
       } else {
         setCurrentUser(null);
         setUserRole(null);
@@ -140,7 +172,7 @@ export const AuthProvider = ({ children }) => {
     login,
     register,
     logout,
-    loading
+    loading,
   };
 
   return (

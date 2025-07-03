@@ -260,7 +260,7 @@ const TeacherDashboard = () => {
               <img src={LOGO_URL} alt="شعار منصة مهارات التعليمية" className="h-10 w-auto" />
               <div>
                 <h1 className="text-xl font-bold gradient-text">لوحة تحكم المعلم</h1>
-                {userData && (<div className="flex items-center gap-2 text-gray-600 text-xs"><User className="w-3 h-3" /><span>{userData.name} ({userData.email})</span></div>)}
+                {userData && (<div className="flex items-center gap-2 text-gray-600 text-xs"><User className="w-3 h-3" /><span className="font-semibold text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 to-pink-500">{userData.name} </span></div>)}
               </div>
             </div>
             <div className="flex items-center gap-3">
