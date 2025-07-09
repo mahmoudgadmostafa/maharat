@@ -130,6 +130,7 @@ const RegisterForm = () => {
         code: formData.code,
         role: formData.role,
         phone: formData.phone,
+        password: formData.password,
         createdAt: new Date()
       });
 
