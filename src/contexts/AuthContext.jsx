@@ -35,7 +35,7 @@ export const AuthProvider = ({ children }) => {
           uid: result.user.uid,
           email: result.user.email,
           displayName: result.user.displayName || userData.name,
-          ...userData, // يحتوي على role, name, createdAt
+          ...userData,
         };
         setCurrentUser(mergedUser);
         setUserRole(userData.role);
@@ -57,64 +57,70 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const register = async (email, password, role, name) => {
-    try {
-      if (role === 'teacher') {
-        const teacherDoc = await getDoc(doc(db, 'settings', 'teacher'));
-        if (teacherDoc.exists() && teacherDoc.data().exists) {
-          toast({
-            title: "خطأ في التسجيل",
-            description: "يوجد معلم مسجل بالفعل في المنصة",
-            variant: "destructive",
-          });
-          throw new Error('Teacher already exists');
-        }
-      }
+ const register = async (formData) => {
+  const { email, password, role, name, phone, code } = formData;
 
-      const result = await createUserWithEmailAndPassword(auth, email, password);
-
-      await setDoc(doc(db, 'users', result.user.uid), {
-        email,
-        role,
-        name,
-        createdAt: new Date().toISOString(),
-      });
-
-      if (role === 'teacher') {
-        await setDoc(doc(db, 'settings', 'teacher'), {
-          exists: true,
-          teacherId: result.user.uid,
+  try {
+    if (role === 'teacher') {
+      const teacherDoc = await getDoc(doc(db, 'settings', 'teacher'));
+      if (teacherDoc.exists() && teacherDoc.data().exists) {
+        toast({
+          title: "خطأ في التسجيل",
+          description: "يوجد معلم مسجل بالفعل في المنصة",
+          variant: "destructive",
         });
+        throw new Error('Teacher already exists');
       }
-
-      const newUser = {
-        uid: result.user.uid,
-        email,
-        displayName: name,
-        role,
-        name,
-      };
-
-      setCurrentUser(newUser);
-      setUserRole(role);
-
-      toast({
-        title: "تم إنشاء الحساب بنجاح",
-        description: "مرحباً بك في منصة مهارات التعليمية",
-      });
-
-      return role;
-    } catch (error) {
-      toast({
-        title: "خطأ في إنشاء الحساب",
-        description: error.message === 'Teacher already exists'
-          ? "يوجد معلم مسجل بالفعل في المنصة"
-          : "حدث خطأ أثناء إنشاء الحساب",
-        variant: "destructive",
-      });
-      throw error;
     }
-  };
+
+    const result = await createUserWithEmailAndPassword(auth, email, password);
+
+    await setDoc(doc(db, 'users', result.user.uid), {
+      email,
+      role,
+      name,
+      phone: phone || '',
+      code: code || '',
+      createdAt: new Date().toISOString(),
+    });
+
+    if (role === 'teacher') {
+      await setDoc(doc(db, 'settings', 'teacher'), {
+        exists: true,
+        teacherId: result.user.uid,
+      });
+    }
+
+    const newUser = {
+      uid: result.user.uid,
+      email,
+      displayName: name,
+      role,
+      name,
+      phone,
+      code,
+    };
+
+    setCurrentUser(newUser);
+    setUserRole(role);
+
+    toast({
+      title: "تم إنشاء الحساب بنجاح",
+      description: "مرحباً بك في منصة مهارات التعليمية",
+    });
+
+    return role;
+  } catch (error) {
+    toast({
+      title: "خطأ في إنشاء الحساب",
+      description: error.message === 'Teacher already exists'
+        ? "يوجد معلم مسجل بالفعل في المنصة"
+        : "حدث خطأ أثناء إنشاء الحساب",
+      variant: "destructive",
+    });
+    throw error;
+  }
+};
 
   const logout = async () => {
     try {

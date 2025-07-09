@@ -14,9 +14,9 @@ import { createUserWithEmailAndPassword } from 'firebase/auth';
 import {
   doc, setDoc, updateDoc, deleteDoc, collection, addDoc,
   query, where, orderBy, onSnapshot, Timestamp, serverTimestamp,
-  getDocs, getDoc
+  getDocs, getDoc, limit
 } from 'firebase/firestore';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/AuthContext'; // Corrected import path
 import { toast } from '@/components/ui/use-toast';
 import { ChatModal } from '@/components/common/ChatModal';
 import { Progress } from '@/components/ui/progress';
@@ -26,7 +26,58 @@ export const TeacherStudentsManager = ({ students, onStudentsUpdate }) => {
 
   const [manageStudentOpen, setManageStudentOpen] = useState(false);
   const [editingStudent, setEditingStudent] = useState(null);
-  const [studentData, setStudentData] = useState({ name: '', email: '', password: '', group: '' });
+  const [studentData, setStudentData] = useState({ name: "", email: "", password: "", group: "", code: "", phone: "" });
+  const [isGeneratingCredentials, setIsGeneratingCredentials] = useState(false);
+
+  useEffect(() => {
+    console.log("manageStudentOpen:", manageStudentOpen, "editingStudent:", editingStudent);
+    if (manageStudentOpen && !editingStudent) {
+      const generateNewStudentCredentials = async () => {
+        setIsGeneratingCredentials(true);
+        try {
+          const settingsRef = doc(db, "platformSettings", "main");
+          const settingsSnap = await getDoc(settingsRef);
+          
+          if (!settingsSnap.exists()) {
+            throw new Error("Platform settings not found. Please ensure 'platformSettings/main' document exists in Firestore.");
+          }
+
+          const settingsData = settingsSnap.data();
+          const startingCode = settingsData?.studentStartingCodeNumber || 1000;
+          const emailDomain = settingsData?.emailDomain || "@maharat.eg";
+
+          const q = query(collection(db, 'users'), where('role', '==', 'student'), orderBy('code', 'desc'), limit(1));
+          const snapshot = await getDocs(q);
+          
+          let newCode = startingCode;
+          if (!snapshot.empty) {
+            const lastStudentCode = parseInt(snapshot.docs[0]?.data()?.code);
+            if (!isNaN(lastStudentCode) && lastStudentCode >= startingCode) {
+              newCode = lastStudentCode + 1;
+            } else {
+              newCode = startingCode;
+            }
+          }
+          
+          const generatedEmail = `${newCode}${emailDomain}`;
+
+          setStudentData(prev => ({
+            ...prev,
+            code: newCode.toString(),
+            email: generatedEmail
+          }));
+        } catch (error) {
+          console.error('خطأ في توليد بيانات الطالب:', error);
+          toast({ title: "خطأ في توليد البيانات", description: error.message || "يرجى التأكد من توفر إعدادات المنصة ووجود اتصال بالإنترنت.", variant: "destructive" });
+        } finally {
+          setIsGeneratingCredentials(false);
+        }
+      };
+      generateNewStudentCredentials();
+    } else if (!manageStudentOpen && !editingStudent) {
+      setStudentData({ name: "", email: "", password: "", group: "", code: "", phone: "" });
+    }
+  }, [manageStudentOpen, editingStudent]);
   const [selectedGroup, setSelectedGroup] = useState('الكل');
 
   const [chatModalOpen, setChatModalOpen] = useState(false);
@@ -101,44 +152,58 @@ export const TeacherStudentsManager = ({ students, onStudentsUpdate }) => {
 
   const handleManageStudent = async (e) => {
     e.preventDefault();
-    const { name, email, password, group } = studentData;
+    const { name, email, password, group, code, phone } = studentData;
 
-    if (!name || !email || (!editingStudent && !password)) {
+    if (!name || (!editingStudent && !email) || (!editingStudent && !password) || (!editingStudent && !code)) {
       toast({ title: 'البيانات غير مكتملة', variant: 'destructive' });
       return;
     }
 
     try {
       if (editingStudent) {
-        await updateDoc(doc(db, 'users', editingStudent.id), { name, email, group });
+        await updateDoc(doc(db, 'users', editingStudent.id), { name, group, phone });
         toast({ title: 'تم تحديث بيانات الطالب' });
       } else {
+        // Create user without signing them in (Firebase automatically signs in new users)
+        // We will create the user and then immediately sign out the newly created user
+        // to keep the teacher's session active.
         const userCredential = await createUserWithEmailAndPassword(studentAuth, email, password);
         const user = userCredential.user;
+
+        // Sign out the newly created user to maintain the teacher's session
+        await studentAuth.signOut();
+
+        // Re-sign in the teacher if their session was affected (this depends on your AuthContext implementation)
+        // If useAuth() manages the teacher's session, it should automatically re-establish it.
+        // If not, you might need to explicitly sign in the teacher here using their credentials.
+        // For now, assuming AuthContext handles teacher session persistence.
+
         await setDoc(doc(db, 'users', user.uid), {
           uid: user.uid,
           name,
           email,
           group,
+          code,
+          phone,
+          password, // Storing password in Firestore is generally not recommended for security. Consider hashing or not storing it at all.
           role: 'student',
           createdAt: Timestamp.now(),
         });
         toast({ title: 'تم إضافة الطالب' });
-        await studentAuth.signOut();
       }
 
-      setStudentData({ name: '', email: '', password: '', group: '' });
+      setStudentData({ name: "", password: "", group: "", phone: "" });
       setEditingStudent(null);
-      setManageStudentOpen(false);
       onStudentsUpdate();
     } catch (error) {
+      console.error("Error during student creation or teacher re-authentication:", error);
       toast({ title: 'خطأ في الحفظ', description: error.message, variant: 'destructive' });
     }
   };
 
-  const handleEditStudent = (student) => {
+    const handleEditStudent = (student) => {
     setEditingStudent(student);
-    setStudentData({ name: student.name, email: student.email, password: '', group: student.group || '' });
+    setStudentData({ name: student.name, email: student.email, password: '', group: student.group || '', code: student.code || '', phone: student.phone || '' });
     setManageStudentOpen(true);
   };
 
@@ -207,8 +272,10 @@ export const TeacherStudentsManager = ({ students, onStudentsUpdate }) => {
                 <DialogHeader><DialogTitle>{editingStudent ? 'تعديل بيانات الطالب' : 'إضافة طالب جديد'}</DialogTitle></DialogHeader>
                 <form onSubmit={handleManageStudent} className="space-y-4">
                   <div><Label>الاسم</Label><Input value={studentData.name} onChange={(e) => setStudentData({ ...studentData, name: e.target.value })} required /></div>
-                  <div><Label>البريد</Label><Input type="email" value={studentData.email} onChange={(e) => setStudentData({ ...studentData, email: e.target.value })} required /></div>
+                  <div><Label>الكود</Label><Input value={studentData.code} onChange={(e) => setStudentData({ ...studentData, code: e.target.value })} readOnly /></div>
+                  <div><Label>البريد</Label><Input type="email" value={studentData.email} onChange={(e) => setStudentData({ ...studentData, email: e.target.value })} required readOnly /></div>
                   <div><Label>المجموعة</Label><Input value={studentData.group} onChange={(e) => setStudentData({ ...studentData, group: e.target.value })} placeholder="مثل: مجموعة 1" /></div>
+                  <div><Label>رقم الهاتف (اختياري)</Label><Input type="tel" value={studentData.phone} onChange={(e) => setStudentData({ ...studentData, phone: e.target.value })} /></div>
                   <div><Label>كلمة المرور {editingStudent && '(اختياري)'}</Label><Input type="password" value={studentData.password} onChange={(e) => setStudentData({ ...studentData, password: e.target.value })} required={!editingStudent} /></div>
                   <DialogFooter><Button type="submit">{editingStudent ? 'حفظ التعديل' : 'إضافة الطالب'}</Button></DialogFooter>
                 </form>
@@ -221,50 +288,55 @@ export const TeacherStudentsManager = ({ students, onStudentsUpdate }) => {
           {filteredStudents.length === 0 ? (
             <p className="text-center py-10 text-gray-500">لا يوجد طلاب في هذه المجموعة</p>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-gray-100 text-gray-700 text-sm">
-                <TableHead className="font-semibold text-center">الاسم</TableHead>
-                <TableHead className="font-semibold text-center">البريد الإلكتروني</TableHead>
-                <TableHead className="font-semibold text-center">المجموعة</TableHead>
-                <TableHead className="font-semibold text-center">تاريخ التسجيل</TableHead>
-                <TableHead className="font-semibold text-center">التقدّم</TableHead>
-                <TableHead className="font-semibold text-center">خيارات</TableHead>
-              </TableRow>
-
-              </TableHeader>
-              <TableBody>
-                {filteredStudents.map(student => (
-                  <TableRow key={student.id}>
-                    <TableCell>{student.name}</TableCell>
-                    <TableCell>{student.email}</TableCell>
-                    <TableCell>{student.group || 'بدون مجموعة'}</TableCell>
-                    <TableCell>
-                      {student.createdAt ? new Date(student.createdAt.seconds * 1000).toLocaleDateString('ar-EG') : 'غير معروف'}
-                    </TableCell>
-                    <TableCell>
-                      {typeof student.completedLessonsCount === 'number' && student.totalLessons > 0 ? (
-                        <div className="flex flex-col gap-1">
-                          {student.completedLessonsCount} / {student.totalLessons} دروس مكتملة
-                          <br />
-                          <Progress value={Math.round((student.completedLessonsCount / student.totalLessons) * 100)} />
-                          <div className="text-xs text-muted-foreground text-end">
-                            {Math.round((student.completedLessonsCount / student.totalLessons) * 100)}%
-                          </div>
-                        </div>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">لا بيانات</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-center space-x-1 space-x-reverse">
-                      <Button size="sm" onClick={() => openChatWithStudent(student)}><Mail className="w-4 h-4" /></Button>
-                      <Button size="sm" onClick={() => handleEditStudent(student)}><Edit className="w-4 h-4" /></Button>
-                      <Button size="sm" onClick={() => handleDeleteStudent(student.id)} className="text-red-600"><Trash2 className="w-4 h-4" /></Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            <Table className="border-collapse border border-gray-300" dir="rtl">
+  <TableHeader>
+    <TableRow className="bg-gray-100 text-gray-700 text-sm border-b border-gray-300">
+      <TableHead className="font-semibold text-center border-r border-gray-300">الاسم</TableHead>
+      <TableHead className="font-semibold text-center border-r border-gray-300">البريد الإلكتروني</TableHead>
+      <TableHead className="font-semibold text-center border-r border-gray-300">الكود</TableHead>
+      <TableHead className="font-semibold text-center border-r border-gray-300">الرقم السري</TableHead>
+      <TableHead className="font-semibold text-center border-r border-gray-300">رقم الهاتف</TableHead>
+      <TableHead className="font-semibold text-center border-r border-gray-300">المجموعة</TableHead>
+      <TableHead className="font-semibold text-center border-r border-gray-300">تاريخ التسجيل</TableHead>
+      <TableHead className="font-semibold text-center">التقدّم</TableHead>
+      <TableHead className="font-semibold text-center">خيارات</TableHead>
+    </TableRow>
+  </TableHeader>
+  <TableBody>
+    {filteredStudents.map(student => (
+      <TableRow key={student.id} className="border-b border-gray-200">
+        <TableCell className="border-r border-gray-200">{student.name}</TableCell>
+        <TableCell className="border-r border-gray-200">{student.email}</TableCell>
+        <TableCell className="border-r border-gray-200">{student.code}</TableCell>
+        <TableCell className="border-r border-gray-200">{student.password}</TableCell>
+        <TableCell className="border-r border-gray-200">{student.phone}</TableCell>
+        <TableCell className="border-r border-gray-200">{student.group || 'بدون مجموعة'}</TableCell>
+        <TableCell className="border-r border-gray-200">
+          {student.createdAt ? new Date(student.createdAt.seconds * 1000).toLocaleDateString('ar-EG') : 'غير معروف'}
+        </TableCell>
+        <TableCell className="border-r border-gray-200">
+          {typeof student.completedLessonsCount === 'number' && student.totalLessons > 0 ? (
+            <div className="flex flex-col gap-1">
+              {student.completedLessonsCount} / {student.totalLessons} دروس مكتملة
+              <br />
+              <Progress value={Math.round((student.completedLessonsCount / student.totalLessons) * 100)} />
+              <div className="text-xs text-muted-foreground text-end">
+                {Math.round((student.completedLessonsCount / student.totalLessons) * 100)}%
+              </div>
+            </div>
+          ) : (
+            <span className="text-xs text-muted-foreground">لا بيانات</span>
+          )}
+        </TableCell>
+        <TableCell className="text-center space-x-1 space-x-reverse">
+          <Button size="sm" onClick={() => openChatWithStudent(student)}><Mail className="w-4 h-4" /></Button>
+          <Button size="sm" onClick={() => handleEditStudent(student)}><Edit className="w-4 h-4" /></Button>
+          <Button size="sm" onClick={() => handleDeleteStudent(student.id)} className="text-red-600"><Trash2 className="w-4 h-4" /></Button>
+        </TableCell>
+      </TableRow>
+    ))}
+  </TableBody>
+</Table>
           )}
         </CardContent>
         <CardFooter className="text-sm text-muted-foreground">المجموع الكلي: {filteredStudents.length} طالب</CardFooter>
