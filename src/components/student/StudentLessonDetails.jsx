@@ -2,9 +2,17 @@ import React from 'react';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { PlayCircle, FileText, MessageSquare, CheckSquare, Award, ExternalLink } from 'lucide-react';
+import { PlayCircle, FileText, MessageSquare, CheckSquare, Award, ExternalLink, BookOpen } from 'lucide-react';
 
-const StudentLessonDetails = ({ lesson, studentProgress, onMarkLessonComplete, onOpenResourceModal, platformSettings }) => {
+const StudentLessonDetails = ({ 
+  lesson, 
+  studentProgress, 
+  onMarkLessonComplete, 
+  onOpenResourceModal, 
+  platformSettings,
+  hasAccessedQuestions,
+  onAccessQuestions
+}) => {
   const getYouTubeEmbedUrl = (url) => {
     if (!url) return null;
     let videoId;
@@ -21,6 +29,17 @@ const StudentLessonDetails = ({ lesson, studentProgress, onMarkLessonComplete, o
   };
 
   const finalExams = platformSettings?.finalExamsList || [];
+
+  const handleQuestionsClick = () => {
+    // استخدم quizUrl إذا كان موجودًا، وإلا استخدم questionsUrl
+    const questionsUrl = lesson.quizUrl || lesson.questionsUrl;
+    if (questionsUrl) {
+      onOpenResourceModal(questionsUrl, `أسئلة ${lesson.title}`, 'questions');
+      onAccessQuestions();
+    } else {
+      console.error('رابط الأسئلة غير متوفر');
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -63,20 +82,20 @@ const StudentLessonDetails = ({ lesson, studentProgress, onMarkLessonComplete, o
                 </div>
               </Button>
             )}
-            {lesson.quizUrl && (
+            {(lesson.quizUrl || lesson.questionsUrl) && (
               <Button variant="outline" className="w-full justify-start p-4 h-auto glass-button-alt"
-                onClick={() => onOpenResourceModal(lesson.quizUrl, `اختبار الدرس: ${lesson.title}`, 'quiz')}>
-                <MessageSquare className="w-8 h-8 ml-3 text-blue-600" />
+                onClick={handleQuestionsClick}>
+                <BookOpen className="w-8 h-8 ml-3 text-blue-600" />
                 <div>
-                  <span className="font-semibold">اختبار الدرس</span>
+                  <span className="font-semibold">أسئلة الدرس</span>
                   <p className="text-xs text-muted-foreground">اختبر فهمك لهذا الدرس</p>
                 </div>
               </Button>
             )}
           </div>
 
-          {!lesson.pdfUrl && !lesson.quizUrl && !lesson.videoUrl && (
-            <p className="text-center text-gray-500 py-6">لا يوجد محتوى إضافي (PDF أو اختبار) لهذا الدرس حاليًا.</p>
+          {!lesson.pdfUrl && !lesson.quizUrl && !lesson.questionsUrl && !lesson.videoUrl && (
+            <p className="text-center text-gray-500 py-6">لا يوجد محتوى إضافي (PDF أو أسئلة) لهذا الدرس حاليًا.</p>
           )}
 
         </CardContent>
@@ -84,10 +103,11 @@ const StudentLessonDetails = ({ lesson, studentProgress, onMarkLessonComplete, o
           {!studentProgress.completedLessons.includes(lesson.id) ? (
             <Button
               onClick={() => onMarkLessonComplete(lesson.id)}
+              disabled={!hasAccessedQuestions}
               className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700"
             >
               <CheckSquare className="w-4 h-4 ml-2" />
-              وضع علامة كمكتمل
+              {hasAccessedQuestions ? "وضع علامة كمكتمل" : "يجب الاطلاع على الأسئلة أولاً"}
             </Button>
           ) : (
             <p className="text-green-600 font-medium text-center w-full">لقد أكملت هذا الدرس بنجاح! 🎉</p>
@@ -100,9 +120,9 @@ const StudentLessonDetails = ({ lesson, studentProgress, onMarkLessonComplete, o
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-red-700">
               <Award className="w-6 h-6" />
-              الاختبارات النهائية
+              الاختبارات 
             </CardTitle>
-            <CardDescription>قم بإجراء الاختبارات النهائية لتقييم فهمك للمادة.</CardDescription>
+            <CardDescription>قم بإجراء الاختبارات  لتقييم فهمك للمادة.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             {finalExams.map((exam) => (
@@ -115,7 +135,7 @@ const StudentLessonDetails = ({ lesson, studentProgress, onMarkLessonComplete, o
                 <ExternalLink className="w-5 h-5 ml-3 text-red-600" />
                 <div>
                   <span className="font-semibold">{exam.name}</span>
-                  <p className="text-xs text-muted-foreground">بدء الاختبار النهائي</p>
+                  <p className="text-xs text-muted-foreground">بدء الاختبار </p>
                 </div>
               </Button>
             ))}

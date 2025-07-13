@@ -267,7 +267,7 @@ export const TeacherLessonsManager = ({ lessons, onLessonsUpdate }) => {
                       )}
                     </div>
                     <div>
-                      <span className="font-medium">اختبار الدرس: </span>
+                      <span className="font-medium">اسئلة الدرس: </span>
                       {lesson.quizUrl ? (
                         <a href={lesson.quizUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline truncate block" title={lesson.quizUrl}>متوفر</a>
                       ) : (

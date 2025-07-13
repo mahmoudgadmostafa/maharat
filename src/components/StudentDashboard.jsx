@@ -9,7 +9,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Award, ExternalLink } from 'lucide-react';
 
-
 import StudentHeader from '@/components/student/StudentHeader';
 import StudentStatsCards from '@/components/student/StudentStatsCards';
 import StudentLessonSelector from '@/components/student/StudentLessonSelector';
@@ -31,6 +30,7 @@ const StudentDashboard = () => {
     studentAiToolsUrl: 'https://app.magicschool.ai/tools'
   });
   const [modalState, setModalState] = useState({ isOpen: false, url: '', title: '', resourceType: '' });
+  const [hasAccessedQuestions, setHasAccessedQuestions] = useState(false);
 
   const fetchLessonsAndUserData = useCallback(async () => {
     if (!currentUser) return { userData: null, lessonsData: [] };
@@ -100,7 +100,7 @@ const StudentDashboard = () => {
             ...newSettings,
             finalExamsList: newSettings.finalExamsList || [], 
             meetingRoomsList: newSettings.meetingRoomsList || [], 
-        }));
+          }));
         }
       }, (error) => {
         if (!isMounted) return;
@@ -129,14 +129,14 @@ const StudentDashboard = () => {
     };
   }, [currentUser, fetchLessonsAndUserData]);
 
-
   const handleLessonClick = (lessonId) => {
     const lesson = lessons.find(l => l.id === lessonId);
     setSelectedLesson(lesson);
+    setHasAccessedQuestions(false); // إعادة تعيين الحالة عند تغيير الدرس
   };
 
   const markLessonAsComplete = async (lessonId) => {
-    if (!currentUser || !selectedLesson || selectedLesson.id !== lessonId) return;
+    if (!currentUser || !selectedLesson || selectedLesson.id !== lessonId || !hasAccessedQuestions) return;
     if (studentProgress.completedLessons.includes(lessonId)) {
       toast({ title: "تم إكمال هذا الدرس بالفعل!", variant: "default" });
       return;
@@ -164,6 +164,9 @@ const StudentDashboard = () => {
   const openResourceModal = (url, title, resourceType) => {
     if (url) {
       setModalState({ isOpen: true, url, title, resourceType });
+      if (resourceType === 'questions') {
+        setHasAccessedQuestions(true);
+      }
     } else {
       toast({ title: "رابط غير متوفر", description: "لم يتم إضافة رابط لهذا المورد بعد.", variant: "default" });
     }
@@ -177,7 +180,6 @@ const StudentDashboard = () => {
   const completedLessonsCount = studentProgress.completedLessons?.length || 0;
   const overallProgress = totalLessons > 0 ? Math.round((completedLessonsCount / totalLessons) * 100) : 0;
   const finalExams = platformSettings?.finalExamsList || [];
-
 
   if (loading) {
     return (
@@ -233,6 +235,7 @@ const StudentDashboard = () => {
                 onMarkLessonComplete={markLessonAsComplete}
                 onOpenResourceModal={openResourceModal}
                 platformSettings={platformSettings}
+                hasAccessedQuestions={hasAccessedQuestions}
               />
             ) : (
               <>
@@ -242,9 +245,9 @@ const StudentDashboard = () => {
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2 text-red-700">
                         <Award className="w-6 h-6" />
-                        الاختبارات النهائية
+                        الاختبارات 
                       </CardTitle>
-                      <CardDescription>قم بإجراء الاختبارات النهائية لتقييم فهمك للمادة.</CardDescription>
+                      <CardDescription>قم بإجراء الاختبارات  لتقييم فهمك للمادة.</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-3">
                       {finalExams.map((exam) => (
@@ -257,7 +260,7 @@ const StudentDashboard = () => {
                           <ExternalLink className="w-5 h-5 ml-3 text-red-600" />
                           <div>
                             <span className="font-semibold">{exam.name}</span>
-                            <p className="text-xs text-muted-foreground">بدء الاختبار النهائي</p>
+                            <p className="text-xs text-muted-foreground">بدء الاختبار </p>
                           </div>
                         </Button>
                       ))}

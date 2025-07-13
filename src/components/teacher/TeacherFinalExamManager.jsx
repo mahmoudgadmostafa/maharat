@@ -79,15 +79,15 @@ export const TeacherFinalExamManager = ({ platformSettings, onSettingsUpdate }) 
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <CheckSquare className="w-6 h-6 text-green-600" />
-            إدارة الاختبارات النهائية
+             الاختبارات 
           </CardTitle>
           <CardDescription>
-            أضف أو قم بتحديث روابط الاختبارات النهائية التي ستظهر للطلاب. يمكنك إضافة أكثر من اختبار.
+            أضف أو قم بتحديث روابط الاختبارات  التي ستظهر للطلاب. يمكنك إضافة أكثر من اختبار.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           {finalExams.length === 0 && !editingExam && (
-            <p className="text-center text-gray-500">لا توجد اختبارات نهائية مضافة حاليًا.</p>
+            <p className="text-center text-gray-500">لا توجد اختبارات  مضافة حاليًا.</p>
           )}
           {finalExams.map((exam) => (
             <motion.div 
@@ -155,7 +155,7 @@ export const TeacherFinalExamManager = ({ platformSettings, onSettingsUpdate }) 
           ))}
 
           <div className="pt-4 border-t mt-6">
-            <h3 className="text-lg font-semibold mb-2">إضافة اختبار نهائي جديد</h3>
+            <h3 className="text-lg font-semibold mb-2">إضافة اختبار  جديد</h3>
             <div className="space-y-3">
               <div>
                 <Label htmlFor="newExamName">اسم الاختبار الجديد</Label>
