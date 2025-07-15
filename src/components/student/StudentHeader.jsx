@@ -179,6 +179,16 @@ const StudentHeader = ({ userData, onLogout }) => {
               </div>
             </div>
             <div className="flex items-center gap-3">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="flex items-center gap-1.5"
+                onClick={() => window.dispatchEvent(new CustomEvent('toggleStudentMessaging'))}
+              >
+                <MessageSquare className="w-3.5 h-3.5" />
+                المراسلات
+              </Button>
+              
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon" className="relative">
@@ -191,7 +201,7 @@ const StudentHeader = ({ userData, onLogout }) => {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-80">
-                  <DropdownMenuLabel>الإشعارات والرسائل</DropdownMenuLabel>
+                  <DropdownMenuLabel>الإشعارات والرسائل من المعلم</DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   {!messagesIndexReady ? (
                     <DropdownMenuItem disabled className="text-center text-orange-600 py-3">

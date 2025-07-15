@@ -19,7 +19,8 @@ export const TeacherLessonsManager = ({ lessons, onLessonsUpdate }) => {
     title: '',
     videoUrl: '',
     pdfUrl: '',
-    quizUrl: ''
+    quizUrl: '',
+    learningOutcomes: []
   });
 
   const handleAddLesson = async (e) => {
@@ -37,6 +38,7 @@ export const TeacherLessonsManager = ({ lessons, onLessonsUpdate }) => {
         await updateDoc(doc(db, 'lessons', editingLesson.id), {
           ...lessonData,
           lessonNumber: parseInt(lessonData.lessonNumber),
+          learningOutcomes: lessonData.learningOutcomes,
           updatedAt: new Date().toISOString()
         });
         toast({
@@ -47,6 +49,7 @@ export const TeacherLessonsManager = ({ lessons, onLessonsUpdate }) => {
         await addDoc(collection(db, 'lessons'), {
           ...lessonData,
           lessonNumber: parseInt(lessonData.lessonNumber),
+          learningOutcomes: lessonData.learningOutcomes,
           createdAt: new Date().toISOString()
         });
         toast({
@@ -55,7 +58,7 @@ export const TeacherLessonsManager = ({ lessons, onLessonsUpdate }) => {
         });
       }
       
-      setLessonData({ lessonNumber: '', title: '', videoUrl: '', pdfUrl: '', quizUrl: '' });
+            setLessonData({ lessonNumber: '', title: '', videoUrl: '', pdfUrl: '', quizUrl: '', learningOutcomes: [] });
       setAddLessonOpen(false);
       setEditingLesson(null);
       onLessonsUpdate(); // Callback to refresh lessons in parent
@@ -75,7 +78,8 @@ export const TeacherLessonsManager = ({ lessons, onLessonsUpdate }) => {
       title: lesson.title,
       videoUrl: lesson.videoUrl || '',
       pdfUrl: lesson.pdfUrl || '',
-      quizUrl: lesson.quizUrl || ''
+      quizUrl: lesson.quizUrl || "",
+      learningOutcomes: lesson.learningOutcomes || []
     });
     setAddLessonOpen(true);
   };
@@ -121,7 +125,7 @@ export const TeacherLessonsManager = ({ lessons, onLessonsUpdate }) => {
               {editingLesson ? 'تعديل الدرس الحالي' : 'إضافة درس جديد'}
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-md">
+          <DialogContent className="sm:max-w-md overflow-y-auto max-h-[80vh]">
             <DialogHeader>
               <DialogTitle className="text-center text-2xl gradient-text">
                 {editingLesson ? 'تعديل الدرس' : 'إضافة درس جديد'}
@@ -184,6 +188,16 @@ export const TeacherLessonsManager = ({ lessons, onLessonsUpdate }) => {
                   onChange={(e) => setLessonData({...lessonData, quizUrl: e.target.value})}
                   className="mt-1"
                   placeholder="https://forms.google.com/..."
+                />
+              </div>
+              <div>
+                <Label htmlFor="learningOutcomes">نواتج التعلم (لكل سطر ناتج تعلم)</Label>
+                <textarea
+                  id="learningOutcomes"
+                  value={lessonData.learningOutcomes.join("\n")}
+                  onChange={(e) => setLessonData({...lessonData, learningOutcomes: e.target.value.split("\n")})}
+                  className="mt-1 flex h-20 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  placeholder="اكتب نواتج التعلم هنا، كل ناتج في سطر جديد."
                 />
               </div>
               <Button type="submit" className="w-full bg-gradient-to-r from-purple-600 to-blue-600">
@@ -274,6 +288,16 @@ export const TeacherLessonsManager = ({ lessons, onLessonsUpdate }) => {
                         <span className="text-gray-500">غير متوفر</span>
                       )}
                     </div>
+                    {lesson.learningOutcomes && lesson.learningOutcomes.length > 0 && (
+                      <div className="md:col-span-3">
+                        <span className="font-medium">نواتج التعلم: </span>
+                        <ul className="list-disc list-inside text-gray-700">
+                          {lesson.learningOutcomes.map((outcome, idx) => (
+                            <li key={idx}>{outcome}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>

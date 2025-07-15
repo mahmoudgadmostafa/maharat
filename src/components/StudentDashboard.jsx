@@ -15,6 +15,7 @@ import StudentLessonSelector from '@/components/student/StudentLessonSelector';
 import StudentQuickAccess from '@/components/student/StudentQuickAccess';
 import StudentLessonDetails from '@/components/student/StudentLessonDetails';
 import StudentWelcomeMessage from '@/components/student/StudentWelcomeMessage';
+import { StudentMessaging } from '@/components/student/StudentMessaging';
 
 const StudentDashboard = () => {
   const { logout, currentUser } = useAuth();
@@ -31,6 +32,7 @@ const StudentDashboard = () => {
   });
   const [modalState, setModalState] = useState({ isOpen: false, url: '', title: '', resourceType: '' });
   const [hasAccessedQuestions, setHasAccessedQuestions] = useState(false);
+  const [showMessaging, setShowMessaging] = useState(false);
 
   const fetchLessonsAndUserData = useCallback(async () => {
     if (!currentUser) return { userData: null, lessonsData: [] };
@@ -57,6 +59,17 @@ const StudentDashboard = () => {
       return { userData: null, lessonsData: [] };
     }
   }, [currentUser]);
+
+  useEffect(() => {
+    const handleToggleMessaging = () => {
+      setShowMessaging(prev => !prev);
+    };
+
+    window.addEventListener('toggleStudentMessaging', handleToggleMessaging);
+    return () => {
+      window.removeEventListener('toggleStudentMessaging', handleToggleMessaging);
+    };
+  }, []);
 
   useEffect(() => {
     if (!currentUser) {
@@ -197,80 +210,86 @@ const StudentDashboard = () => {
       <StudentHeader userData={userData} onLogout={logout} />
 
       <div className="container mx-auto px-2 sm:px-4 py-8">
-        <StudentStatsCards 
-          lessonsCount={totalLessons} 
-          completedLessonsCount={completedLessonsCount} 
-          overallProgress={overallProgress} 
-        />
-
-        <div className="grid lg:grid-cols-3 gap-8">
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.1 }}
-            className="lg:col-span-1 space-y-6"
-          >
-            <StudentLessonSelector 
-              lessons={lessons} 
-              selectedLessonId={selectedLesson?.id} 
-              onLessonClick={handleLessonClick}
-              studentProgress={studentProgress}
+        {showMessaging ? (
+          <StudentMessaging />
+        ) : (
+          <>
+            <StudentStatsCards 
+              lessonsCount={totalLessons} 
+              completedLessonsCount={completedLessonsCount} 
+              overallProgress={overallProgress} 
             />
-            <StudentQuickAccess 
-              platformSettings={platformSettings} 
-              onOpenResourceModal={openResourceModal} 
-            />
-          </motion.div>
 
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.2 }}
-            className="lg:col-span-2"
-          >
-            {selectedLesson ? (
-              <StudentLessonDetails 
-                lesson={selectedLesson}
-                studentProgress={studentProgress}
-                onMarkLessonComplete={markLessonAsComplete}
-                onOpenResourceModal={openResourceModal}
-                platformSettings={platformSettings}
-                hasAccessedQuestions={hasAccessedQuestions}
-              />
-            ) : (
-              <>
-                <StudentWelcomeMessage siteName={platformSettings.siteName} />
-                {finalExams.length > 0 && (
-                  <Card className="mt-6 glass-effect-alt border-0 shadow-xl bg-gradient-to-r from-red-500/10 to-orange-500/10">
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2 text-red-700">
-                        <Award className="w-6 h-6" />
-                        الاختبارات 
-                      </CardTitle>
-                      <CardDescription>قم بإجراء الاختبارات  لتقييم فهمك للمادة.</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                      {finalExams.map((exam) => (
-                        <Button
-                          key={exam.id}
-                          variant="outline"
-                          className="w-full justify-start p-4 h-auto glass-button-alt border-red-300 hover:border-red-500"
-                          onClick={() => openResourceModal(exam.url, exam.name, 'finalExam')}
-                        >
-                          <ExternalLink className="w-5 h-5 ml-3 text-red-600" />
-                          <div>
-                            <span className="font-semibold">{exam.name}</span>
-                            <p className="text-xs text-muted-foreground">بدء الاختبار </p>
-                          </div>
-                        </Button>
-                      ))}
-                    </CardContent>
-                  </Card>
+            <div className="grid lg:grid-cols-3 gap-8">
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.1 }}
+                className="lg:col-span-1 space-y-6"
+              >
+                <StudentLessonSelector 
+                  lessons={lessons} 
+                  selectedLessonId={selectedLesson?.id} 
+                  onLessonClick={handleLessonClick}
+                  studentProgress={studentProgress}
+                />
+                <StudentQuickAccess 
+                  platformSettings={platformSettings} 
+                  onOpenResourceModal={openResourceModal} 
+                />
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.2 }}
+                className="lg:col-span-2"
+              >
+                {selectedLesson ? (
+                  <StudentLessonDetails 
+                    lesson={selectedLesson}
+                    studentProgress={studentProgress}
+                    onMarkLessonComplete={markLessonAsComplete}
+                    onOpenResourceModal={openResourceModal}
+                    platformSettings={platformSettings}
+                    hasAccessedQuestions={hasAccessedQuestions}
+                  />
+                ) : (
+                  <>
+                    <StudentWelcomeMessage siteName={platformSettings.siteName} />
+                    {finalExams.length > 0 && (
+                      <Card className="mt-6 glass-effect-alt border-0 shadow-xl bg-gradient-to-r from-red-500/10 to-orange-500/10">
+                        <CardHeader>
+                          <CardTitle className="flex items-center gap-2 text-red-700">
+                            <Award className="w-6 h-6" />
+                            الاختبارات 
+                          </CardTitle>
+                          <CardDescription>قم بإجراء الاختبارات  لتقييم فهمك للمادة.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-3">
+                          {finalExams.map((exam) => (
+                            <Button
+                              key={exam.id}
+                              variant="outline"
+                              className="w-full justify-start p-4 h-auto glass-button-alt border-red-300 hover:border-red-500"
+                              onClick={() => openResourceModal(exam.url, exam.name, 'finalExam')}
+                            >
+                              <ExternalLink className="w-5 h-5 ml-3 text-red-600" />
+                              <div>
+                                <span className="font-semibold">{exam.name}</span>
+                                <p className="text-xs text-muted-foreground">بدء الاختبار </p>
+                              </div>
+                            </Button>
+                          ))}
+                        </CardContent>
+                      </Card>
+                    )}
+                  </>
                 )}
-              </>
-            )}
-          </motion.div>
-        </div>
+              </motion.div>
+            </div>
+          </>
+        )}
       </div>
       <ResourceModal
         isOpen={modalState.isOpen}

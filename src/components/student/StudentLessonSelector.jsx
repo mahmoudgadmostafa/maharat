@@ -1,6 +1,7 @@
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Award } from 'lucide-react';
 
 const StudentLessonSelector = ({ lessons, selectedLessonId, onLessonClick, studentProgress }) => {
   // دالة للتحقق من استكمال جميع الدروس السابقة
@@ -13,6 +14,9 @@ const StudentLessonSelector = ({ lessons, selectedLessonId, onLessonClick, stude
     }
     return true;
   };
+
+  // العثور على الدرس المحدد حالياً
+  const selectedLesson = lessons.find(lesson => lesson.id === selectedLessonId);
 
   return (
     <Card className="glass-effect-alt border-0 shadow-xl">
@@ -51,6 +55,21 @@ const StudentLessonSelector = ({ lessons, selectedLessonId, onLessonClick, stude
           </Select>
         ) : (
           <p className="text-center text-gray-500 py-4">لا توجد دروس متاحة حاليًا.</p>
+        )}
+        
+        {/* عرض نواتج التعلم للدرس المحدد */}
+        {selectedLesson && selectedLesson.learningOutcomes && selectedLesson.learningOutcomes.length > 0 && (
+          <div className="mt-6 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+            <h3 className="text-lg font-semibold mb-3 flex items-center gap-2 text-yellow-700">
+              <Award className="text-yellow-500" /> 
+              نواتج التعلم للدرس {selectedLesson.lessonNumber}: {selectedLesson.title}
+            </h3>
+            <ul className="list-disc list-inside text-gray-700 space-y-2">
+              {selectedLesson.learningOutcomes.map((outcome, idx) => (
+                <li key={idx} className="text-sm">{outcome}</li>
+              ))}
+            </ul>
+          </div>
         )}
       </CardContent>
     </Card>

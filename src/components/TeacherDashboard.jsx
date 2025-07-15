@@ -24,6 +24,7 @@ import { TeacherContentManager } from '@/components/teacher/TeacherContentManage
 import { TeacherStudentsManager } from '@/components/teacher/TeacherStudentsManager';
 import { TeacherMeetingRoomManager } from '@/components/teacher/TeacherMeetingRoomManager';
 import { TeacherPlatformSettings } from '@/components/teacher/TeacherPlatformSettings';
+import { TeacherMessagesManager } from '@/components/teacher/TeacherMessagesManager';
 
 const LOGO_URL = "https://storage.googleapis.com/hostinger-horizons-assets-prod/3760d6a6-ab96-447b-8deb-dbeb7cec4327/ddb9811d5f3df3eb28c2f555087dd5ba.jpg";
 
@@ -312,9 +313,10 @@ const TeacherDashboard = () => {
       <div className="container mx-auto px-2 sm:px-4 py-8">
         <Tabs defaultValue="content" value={activeTab} onValueChange={setActiveTab} className="w-full">
           <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}>
-            <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 gap-1 md:gap-2 bg-white/70 backdrop-blur-md p-1.5 rounded-lg shadow-lg mb-8">
+            <TabsList className="grid w-full grid-cols-2 sm:grid-cols-5 gap-1 md:gap-2 bg-white/70 backdrop-blur-md p-1.5 rounded-lg shadow-lg mb-8">
               <TabsTrigger value="content" className="flex-1 justify-center gap-1.5 md:gap-2 text-xs sm:text-sm"><Edit3 className="w-3.5 h-3.5 md:w-4 md:h-4" />إدارة المحتوى</TabsTrigger>
               <TabsTrigger value="students" className="flex-1 justify-center gap-1.5 md:gap-2 text-xs sm:text-sm"><Users className="w-3.5 h-3.5 md:w-4 md:h-4" />إدارة الطلاب</TabsTrigger>
+              <TabsTrigger value="messages" className="flex-1 justify-center gap-1.5 md:gap-2 text-xs sm:text-sm"><MessageSquare className="w-3.5 h-3.5 md:w-4 md:h-4" />إدارة الرسائل</TabsTrigger>
               <TabsTrigger value="meeting" className="flex-1 justify-center gap-1.5 md:gap-2 text-xs sm:text-sm"><Video className="w-3.5 h-3.5 md:w-4 md:h-4" />غرفة الاجتماعات</TabsTrigger>
               <TabsTrigger value="platformSettings" className="flex-1 justify-center gap-1.5 md:gap-2 text-xs sm:text-sm"><Settings className="w-3.5 h-3.5 md:w-4 md:h-4" />إعدادات المنصة</TabsTrigger>
             </TabsList>
@@ -329,6 +331,7 @@ const TeacherDashboard = () => {
 
           <TabsContent value="content"><TeacherContentManager lessons={lessons} onLessonsUpdate={fetchStaticData} platformSettings={platformSettings} onSettingsUpdate={handleSettingsUpdate} /></TabsContent>
           <TabsContent value="students"><TeacherStudentsManager students={students} onStudentsUpdate={fetchStaticData} lessons={lessons} studentProgress={studentProgress} /></TabsContent>
+          <TabsContent value="messages"><TeacherMessagesManager /></TabsContent>
           <TabsContent value="meeting"><TeacherMeetingRoomManager platformSettings={platformSettings} onSettingsUpdate={handleSettingsUpdate} /></TabsContent>
           <TabsContent value="platformSettings"><TeacherPlatformSettings platformSettings={platformSettings} onSettingsUpdate={handleSettingsUpdate} /></TabsContent>
         </Tabs>

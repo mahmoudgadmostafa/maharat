@@ -94,6 +94,8 @@ const StudentLessonDetails = ({
             )}
           </div>
 
+
+
           {!lesson.pdfUrl && !lesson.quizUrl && !lesson.questionsUrl && !lesson.videoUrl && (
             <p className="text-center text-gray-500 py-6">لا يوجد محتوى إضافي (PDF أو أسئلة) لهذا الدرس حاليًا.</p>
           )}
