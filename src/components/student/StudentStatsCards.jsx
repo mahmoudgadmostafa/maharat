@@ -9,7 +9,7 @@ const StudentStatsCards = ({ lessonsCount, completedLessonsCount, overallProgres
     <motion.div
       initial={{ opacity: 0, y: -20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="grid md:grid-cols-3 gap-6 mb-8"
+      className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-8"
     >
       <Card className="glass-effect-alt border-0 shadow-xl bg-white/60">
         <CardHeader>

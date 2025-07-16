@@ -7,6 +7,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import LoginForm from '@/components/auth/LoginForm';
 import RegisterForm from '@/components/auth/RegisterForm';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
+import LazyImage from '@/components/LazyImage';
+import LoadingSpinner from '@/components/LoadingSpinner';
 
 const LOGO_URL = "https://storage.googleapis.com/hostinger-horizons-assets-prod/3760d6a6-ab96-447b-8deb-dbeb7cec4327/ddb9811d5f3df3eb28c2f555087dd5ba.jpg";
 
@@ -50,7 +52,12 @@ const HomePage = () => {
       <header className="py-4 bg-white/80 backdrop-blur-sm shadow-sm sticky top-0 z-50">
         <div className="container mx-auto px-4 flex justify-between items-center">
           <div className="flex items-center space-x-3 space-x-reverse">
-            <img src={LOGO_URL} alt="شعار منصة مهارات التعليمية" className="h-12 w-auto" />
+            <LazyImage 
+              src={LOGO_URL} 
+              alt="شعار منصة مهارات التعليمية" 
+              className="h-12 w-auto"
+              placeholder={<div className="h-12 w-12 bg-purple-200 rounded animate-pulse"></div>}
+            />
             <span className="text-2xl font-bold gradient-text">منصة مهارات التعليمية</span>
           </div>
         </div>
@@ -71,7 +78,12 @@ const HomePage = () => {
               animate={{ rotate: [0, 5, -5, 0] }}
               transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
             >
-              <img src={LOGO_URL} alt="شعار منصة مهارات التعليمية يتأرجح" className="w-32 h-32 mx-auto rounded-full shadow-lg" />
+              <LazyImage 
+                src={LOGO_URL} 
+                alt="شعار منصة مهارات التعليمية يتأرجح" 
+                className="w-32 h-32 mx-auto rounded-full shadow-lg"
+                placeholder={<div className="w-32 h-32 mx-auto rounded-full bg-purple-200 animate-pulse"></div>}
+              />
             </motion.div>
             
             <h1 className="text-5xl md:text-6xl font-bold mb-6 gradient-text">
@@ -96,7 +108,11 @@ const HomePage = () => {
                     <DialogTitle>تسجيل الدخول</DialogTitle>
                     <DialogDescription>ادخل بياناتك للوصول إلى المنصة</DialogDescription>
                   </DialogHeader>
-                  <LoginForm onSubmit={handleLogin} isLoading={isLoading} />
+                  <LoginForm 
+                    onSubmit={handleLogin} 
+                    isLoading={isLoading}
+                    LoadingComponent={<LoadingSpinner size="small" text="جاري تسجيل الدخول..." />}
+                  />
                 </DialogContent>
               </Dialog>
 
@@ -113,7 +129,11 @@ const HomePage = () => {
                     <DialogTitle className="text-center text-2xl gradient-text">إنشاء حساب جديد</DialogTitle>
                     <DialogDescription>انضم إلى منصتنا التعليمية</DialogDescription>
                   </DialogHeader>
-                  <RegisterForm onSubmit={handleRegister} isLoading={isLoading} />
+                  <RegisterForm 
+                    onSubmit={handleRegister} 
+                    isLoading={isLoading}
+                    LoadingComponent={<LoadingSpinner size="small" text="جاري إنشاء الحساب..." />}
+                  />
                 </DialogContent>
               </Dialog>
             </div>

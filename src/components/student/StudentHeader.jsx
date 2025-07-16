@@ -166,27 +166,30 @@ const StudentHeader = ({ userData, onLogout }) => {
       <div className="bg-white/80 backdrop-blur-sm border-b shadow-sm sticky top-0 z-50">
         <div className="container mx-auto px-4 py-3">
           <div className="flex justify-between items-center">
-            <div className="flex items-center space-x-3 space-x-reverse">
+            <div className="flex flex-col sm:flex-row items-center sm:space-x-3 sm:space-x-reverse">
               <img src={LOGO_URL} alt="شعار منصة مهارات التعليمية" className="h-10 w-auto" />
-              <div>
+              <div className="text-center sm:text-right mt-2 sm:mt-0">
                 <h1 className="text-xl font-bold gradient-text-alt">لوحة الطالب</h1>
                 {userData && (
-                  <div className="flex items-center gap-2 text-xs text-gray-600"><User className="w-3 h-3" /><span>
-                    <span className="bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent font-semibold text-base">{userData.name}</span> {" "}
-                    (<span className="bg-gradient-to-r from-purple-400 to-pink-500 bg-clip-text text-transparent font-medium text-sm">{userData.group} </span>) </span>
+                  <div className="flex flex-col sm:flex-row items-center sm:gap-2 text-xs text-gray-600">
+                    <User className="w-3 h-3" />
+                    <span>
+                      <span className="bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent font-semibold text-base">{userData.name}</span> {" "}
+                      (<span className="bg-gradient-to-r from-purple-400 to-pink-500 bg-clip-text text-transparent font-medium text-sm">{userData.group} </span>)
+                    </span>
                   </div>
                 )}
               </div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap justify-center sm:justify-end items-center gap-2 mt-3 sm:mt-0">
               <Button 
                 variant="outline" 
                 size="sm" 
-                className="flex items-center gap-1.5"
+                className="flex items-center gap-1.5 px-3 py-2 sm:px-4 sm:py-2"
                 onClick={() => window.dispatchEvent(new CustomEvent('toggleStudentMessaging'))}
               >
                 <MessageSquare className="w-3.5 h-3.5" />
-                المراسلات
+                <span className="hidden sm:inline">المراسلات</span>
               </Button>
               
               <DropdownMenu>
@@ -238,9 +241,9 @@ const StudentHeader = ({ userData, onLogout }) => {
                 </DropdownMenuContent>
               </DropdownMenu>
 
-              <Button onClick={onLogout} variant="outline" size="sm" className="flex items-center gap-1.5">
+              <Button onClick={onLogout} variant="outline" size="sm" className="flex items-center gap-1.5 px-3 py-2 sm:px-4 sm:py-2">
                 <LogOut className="w-3.5 h-3.5" />
-                تسجيل الخروج
+                <span className="hidden sm:inline">تسجيل الخروج</span>
               </Button>
             </div>
           </div>

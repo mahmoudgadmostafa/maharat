@@ -6,6 +6,7 @@ import { Toaster } from '@/components/ui/toaster';
 import HomePage from '@/components/HomePage';
 import StudentDashboard from '@/components/StudentDashboard';
 import TeacherDashboard from '@/components/TeacherDashboard';
+import ErrorBoundary from '@/components/ErrorBoundary';
 
 const AppRoutes = () => {
   const { currentUser, userRole } = useAuth();
@@ -55,14 +56,16 @@ const AppRoutes = () => {
 
 const App = () => {
   return (
-    <AuthProvider>
-      <Router>
-        <div className="App">
-          <AppRoutes />
-          <Toaster />
-        </div>
-      </Router>
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <Router>
+          <div className="App">
+            <AppRoutes />
+            <Toaster />
+          </div>
+        </Router>
+      </AuthProvider>
+    </ErrorBoundary>
   );
 };
 

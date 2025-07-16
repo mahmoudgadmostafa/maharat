@@ -24,12 +24,12 @@ const StudentQuickAccess = ({ platformSettings, onOpenResourceModal }) => {
                <Button 
                 key={room.id}
                 variant="outline"
-                className="w-full justify-start p-4 h-auto glass-button-alt border-green-300 hover:border-green-500"
+                className="w-full justify-start p-3 sm:p-4 h-auto glass-button-alt border-green-300 hover:border-green-500"
                 onClick={() => onOpenResourceModal(room.url, room.name, 'meeting')}
               >
-                <ExternalLink className="w-5 h-5 ml-3 text-green-600" />
-                <div>
-                  <span className="font-semibold">{room.name}</span>
+                <ExternalLink className="w-4 h-4 sm:w-5 sm:h-5 ml-2 sm:ml-3 text-green-600" />
+                <div className="text-right">
+                  <span className="font-semibold text-sm sm:text-base">{room.name}</span>
                   <p className="text-xs text-muted-foreground">الانضمام إلى الاجتماع</p>
                 </div>
               </Button>
@@ -48,9 +48,9 @@ const StudentQuickAccess = ({ platformSettings, onOpenResourceModal }) => {
         </CardHeader>
         <CardContent className="flex justify-center">
           <Button onClick={() => window.open(studentAiToolsUrl, '_blank', 'noopener,noreferrer')}
-            className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700">
+            className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 px-4 py-2 sm:px-6 sm:py-3">
             <ExternalLink className="w-4 h-4 ml-2" />
-            فتح تطبيقات الذكاء الاصطناعي
+            <span className="text-sm sm:text-base">فتح تطبيقات الذكاء الاصطناعي</span>
           </Button>
         </CardContent>
       </Card>

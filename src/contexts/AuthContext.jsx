@@ -8,6 +8,7 @@ import {
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { toast } from '@/components/ui/use-toast';
+import LoadingSpinner from '@/components/LoadingSpinner';
 
 const AuthContext = createContext();
 
@@ -183,7 +184,13 @@ export const AuthProvider = ({ children }) => {
 
   return (
     <AuthContext.Provider value={value}>
-      {!loading && children}
+      {loading ? (
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-100">
+          <LoadingSpinner size="large" text="جاري تحميل المنصة..." />
+        </div>
+      ) : (
+        children
+      )}
     </AuthContext.Provider>
   );
 };

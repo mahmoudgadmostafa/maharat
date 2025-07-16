@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --host",
     "build": "vite build",
     "preview": "vite preview"
   },
@@ -29,6 +29,7 @@
     "lucide-react": "^0.285.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "react-pdf": "^10.0.1",
     "react-router-dom": "^6.16.0",
     "tailwind-merge": "^1.14.0",
     "tailwindcss-animate": "^1.0.7",
