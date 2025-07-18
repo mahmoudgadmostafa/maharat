@@ -169,7 +169,7 @@ const StudentHeader = ({ userData, onLogout }) => {
             <div className="flex flex-col sm:flex-row items-center sm:space-x-3 sm:space-x-reverse">
               <img src={LOGO_URL} alt="شعار منصة مهارات التعليمية" className="h-10 w-auto" />
               <div className="text-center sm:text-right mt-2 sm:mt-0">
-                <h1 className="text-xl font-bold gradient-text-alt">لوحة الطالب</h1>
+                <h1 className="text-xl font-bold gradient-text-alt">لوحة تحكم المتعلم</h1>
                 {userData && (
                   <div className="flex flex-col sm:flex-row items-center sm:gap-2 text-xs text-gray-600">
                     <User className="w-3 h-3" />
