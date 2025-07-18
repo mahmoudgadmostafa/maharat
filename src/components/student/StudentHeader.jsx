@@ -189,7 +189,8 @@ const StudentHeader = ({ userData, onLogout }) => {
                 onClick={() => window.dispatchEvent(new CustomEvent('toggleStudentMessaging'))}
               >
                 <MessageSquare className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">المراسلات</span>
+                <span className="hidden sm:inline">📨 الرسائل
+</span>
               </Button>
               
               <DropdownMenu>
