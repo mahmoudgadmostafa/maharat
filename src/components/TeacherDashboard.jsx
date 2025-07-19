@@ -324,8 +324,62 @@ const TeacherDashboard = () => {
         
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="mb-8">
             <Card className="glass-effect border-0 shadow-xl bg-gradient-to-r from-purple-600/10 to-blue-600/10">
-              <CardHeader><CardTitle className="flex items-center gap-2"><Brain className="w-6 h-6 text-purple-600" />تطبيقات الذكاء الاصطناعي للمعلم</CardTitle><CardDescription>استكشف أدوات الذكاء الاصطناعي المساعدة لإنشاء المحتوى التعليمي والاختبارات بكفاءة.</CardDescription></CardHeader>
-              <CardContent className="flex justify-center"><Button onClick={() => window.open(platformSettings.teacherAiToolsUrl || 'https://app.magicschool.ai/tools', '_blank', 'noopener,noreferrer')} className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"><ExternalLink className="w-4 h-4 ml-2" />فتح تطبيقات الذكاء الاصطناعي</Button></CardContent>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Brain className="w-6 h-6 text-purple-600" />
+                  تطبيقات الذكاء الاصطناعي للمعلم
+                </CardTitle>
+                <CardDescription>استكشف أدوات الذكاء الاصطناعي المساعدة لإنشاء المحتوى التعليمي والاختبارات بكفاءة.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+  {platformSettings?.teacherAiToolsList && platformSettings.teacherAiToolsList.length > 0 ? (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      {platformSettings.teacherAiToolsList.map((tool, index) => (
+        <motion.div
+          key={tool.id}
+          initial={{ opacity: 0, scale: 0.95, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          transition={{ delay: index * 0.1, duration: 0.4, ease: 'easeOut' }}
+          whileHover={{ scale: 1.03 }}
+          className="transition-transform duration-200"
+        >
+          <Button
+            variant="ghost"
+            className="w-full h-auto p-5 flex items-center justify-between rounded-2xl bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-md border border-purple-300/40 hover:border-purple-500 shadow-xl hover:shadow-2xl group transition-all duration-300"
+            onClick={() => window.open(tool.url, '_blank', 'noopener,noreferrer')}
+          >
+            {/* أيقونة */}
+            <Brain className="w-6 h-6 text-purple-500 group-hover:text-purple-600 transition" />
+
+            {/* النص */}
+            <div className="text-right flex-1 px-4">
+              <div className="font-bold text-base text-orange-500 group-hover:text-orange-600 transition">
+                {tool.name}
+              </div>
+              <p className="text-sm text-green-500 group-hover:text-green-600 transition">
+                فتح التطبيق
+              </p>
+            </div>
+
+            {/* أيقونة الرابط */}
+            <ExternalLink className="w-5 h-5 text-purple-400 group-hover:text-purple-500 transition" />
+          </Button>
+        </motion.div>
+      ))}
+    </div>
+  ) : (
+    <div className="flex justify-center">
+      <Button 
+        onClick={() => window.open(platformSettings.teacherAiToolsUrl || 'https://app.magicschool.ai/tools', '_blank', 'noopener,noreferrer')} 
+        className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 px-6 py-3 text-white rounded-xl shadow-xl hover:shadow-2xl transition duration-300 flex items-center space-x-2"
+      >
+        <ExternalLink className="w-4 h-4 text-white" />
+        <span className="text-base font-semibold">فتح تطبيقات الذكاء الاصطناعي</span>
+      </Button>
+    </div>
+  )}
+</CardContent>
+
             </Card>
           </motion.div>
 
