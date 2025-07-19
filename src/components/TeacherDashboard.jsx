@@ -357,7 +357,7 @@ const TeacherDashboard = () => {
                 {tool.name}
               </div>
               <p className="text-sm text-green-500 group-hover:text-green-600 transition">
-                فتح التطبيق
+                فتح الغرفة
               </p>
             </div>
 
