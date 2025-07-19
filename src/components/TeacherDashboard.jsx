@@ -313,7 +313,7 @@ const TeacherDashboard = () => {
       <div className="container mx-auto px-2 sm:px-4 py-8">
         <Tabs defaultValue="content" value={activeTab} onValueChange={setActiveTab} className="w-full">
           <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}>
-            <TabsList className="grid w-full grid-cols-2 sm:grid-cols-5 gap-1 md:gap-2 bg-white/70 backdrop-blur-md p-1.5 rounded-lg shadow-lg mb-8">
+            <TabsList className="flex overflow-x-auto w-full gap-1 md:gap-2 bg-white/70 backdrop-blur-md p-1.5 rounded-lg shadow-lg mb-8">
               <TabsTrigger value="content" className="flex-1 justify-center gap-1.5 md:gap-2 text-xs sm:text-sm"><Edit3 className="w-3.5 h-3.5 md:w-4 md:h-4" />إدارة المحتوى</TabsTrigger>
               <TabsTrigger value="students" className="flex-1 justify-center gap-1.5 md:gap-2 text-xs sm:text-sm"><Users className="w-3.5 h-3.5 md:w-4 md:h-4" />إدارة الطلاب</TabsTrigger>
               <TabsTrigger value="messages" className="flex-1 justify-center gap-1.5 md:gap-2 text-xs sm:text-sm"><MessageSquare className="w-3.5 h-3.5 md:w-4 md:h-4" />إدارة الرسائل</TabsTrigger>
