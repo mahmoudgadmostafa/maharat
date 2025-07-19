@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
@@ -50,7 +49,6 @@ const TeacherDashboard = () => {
   const [chatTargetUser, setChatTargetUser] = useState(null);
   const [chatMessages, setChatMessages] = useState([]);
   const [messagesIndexReady, setMessagesIndexReady] = useState(false);
-
 
   const fetchStaticData = useCallback(async () => {
     if (!currentUser) return;
@@ -236,7 +234,6 @@ const TeacherDashboard = () => {
     }
   };
 
-
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-100 flex items-center justify-center">
@@ -254,21 +251,29 @@ const TeacherDashboard = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-100 pattern-bg">
+      {/* شريط التنقل العلوي */}
       <div className="bg-white/80 backdrop-blur-sm border-b shadow-sm sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-3">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center space-x-3 space-x-reverse">
-              <img src={LOGO_URL} alt="شعار منصة مهارات التعليمية" className="h-10 w-auto" />
+        <div className="container mx-auto px-2 sm:px-4 py-2 sm:py-3">
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-2">
+            <div className="flex items-center space-x-2 space-x-reverse">
+              <img src={LOGO_URL} alt="شعار منصة مهارات التعليمية" className="h-8 sm:h-10 w-auto" />
               <div>
-                <h1 className="text-xl font-bold gradient-text">لوحة تحكم المعلم</h1>
-                {userData && (<div className="flex items-center gap-2 text-gray-600 text-xs"><User className="w-3 h-3" /><span className="font-semibold text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 to-pink-500">{userData.name} </span></div>)}
+                <h1 className="text-lg sm:text-xl font-bold gradient-text">لوحة تحكم المعلم</h1>
+                {userData && (
+                  <div className="flex items-center gap-1 text-gray-600 text-xs">
+                    <User className="w-3 h-3" />
+                    <span className="font-semibold text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 to-pink-500">
+                      {userData.name}
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
-            <div className="flex items-center gap-3">
-            <DropdownMenu>
+            <div className="flex items-center gap-2">
+              <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon" className="relative">
-                    <Bell className="h-5 w-5" />
+                    <Bell className="h-4 sm:h-5 w-4 sm:w-5" />
                     {unreadMessagesCount > 0 && (
                       <Badge className="absolute -top-1 -right-1 h-4 w-4 p-0 flex items-center justify-center text-xs bg-red-500 text-white">
                         {unreadMessagesCount > 9 ? '9+' : unreadMessagesCount}
@@ -276,7 +281,7 @@ const TeacherDashboard = () => {
                     )}
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-80">
+                <DropdownMenuContent align="end" className="w-72 sm:w-80 max-h-[60vh] overflow-y-auto">
                   <DropdownMenuLabel>الرسائل الجديدة من الطلاب</DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   {!messagesIndexReady ? (
@@ -304,92 +309,162 @@ const TeacherDashboard = () => {
                   )}
                 </DropdownMenuContent>
               </DropdownMenu>
-              <Button onClick={logout} variant="outline" size="sm" className="flex items-center gap-1.5"><LogOut className="w-3.5 h-3.5" />تسجيل الخروج</Button>
+              <Button 
+                onClick={logout} 
+                variant="outline" 
+                size="sm" 
+                className="flex items-center gap-1.5 text-xs sm:text-sm"
+              >
+                <LogOut className="w-3 h-3" />
+                <span className="hidden sm:inline">تسجيل الخروج</span>
+              </Button>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="container mx-auto px-2 sm:px-4 py-8">
+      {/* المحتوى الرئيسي */}
+      <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-8">
         <Tabs defaultValue="content" value={activeTab} onValueChange={setActiveTab} className="w-full">
           <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}>
-            <TabsList className="flex overflow-x-auto w-full gap-1 md:gap-2 bg-white/70 backdrop-blur-md p-1.5 rounded-lg shadow-lg mb-8">
-              <TabsTrigger value="content" className="flex-1 justify-center gap-1.5 md:gap-2 text-xs sm:text-sm"><Edit3 className="w-3.5 h-3.5 md:w-4 md:h-4" />إدارة المحتوى</TabsTrigger>
-              <TabsTrigger value="students" className="flex-1 justify-center gap-1.5 md:gap-2 text-xs sm:text-sm"><Users className="w-3.5 h-3.5 md:w-4 md:h-4" />إدارة الطلاب</TabsTrigger>
-              <TabsTrigger value="messages" className="flex-1 justify-center gap-1.5 md:gap-2 text-xs sm:text-sm"><MessageSquare className="w-3.5 h-3.5 md:w-4 md:h-4" />إدارة الرسائل</TabsTrigger>
-              <TabsTrigger value="meeting" className="flex-1 justify-center gap-1.5 md:gap-2 text-xs sm:text-sm"><Video className="w-3.5 h-3.5 md:w-4 md:h-4" />غرفة الاجتماعات</TabsTrigger>
-              <TabsTrigger value="platformSettings" className="flex-1 justify-center gap-1.5 md:gap-2 text-xs sm:text-sm"><Settings className="w-3.5 h-3.5 md:w-4 md:h-4" />إعدادات المنصة</TabsTrigger>
-            </TabsList>
+            <TabsList className="flex w-full bg-white/70 backdrop-blur-md p-1 rounded-lg shadow-lg mb-4 sm:mb-8 overflow-hidden">
+  <TabsTrigger 
+    value="content" 
+    className="flex-1 flex flex-col items-center justify-center gap-1 py-2 text-xs sm:text-sm min-w-0"
+  >
+    <Edit3 className="w-3 h-3 sm:w-4 sm:h-4" />
+    <span className="truncate">المحتوى</span>
+  </TabsTrigger>
+  <TabsTrigger 
+    value="students" 
+    className="flex-1 flex flex-col items-center justify-center gap-1 py-2 text-xs sm:text-sm min-w-0"
+  >
+    <Users className="w-3 h-3 sm:w-4 sm:h-4" />
+    <span className="truncate">الطلاب</span>
+  </TabsTrigger>
+  <TabsTrigger 
+    value="messages" 
+    className="flex-1 flex flex-col items-center justify-center gap-1 py-2 text-xs sm:text-sm min-w-0"
+  >
+    <MessageSquare className="w-3 h-3 sm:w-4 sm:h-4" />
+    <span className="truncate">الرسائل</span>
+  </TabsTrigger>
+  <TabsTrigger 
+    value="meeting" 
+    className="flex-1 flex flex-col items-center justify-center gap-1 py-2 text-xs sm:text-sm min-w-0"
+  >
+    <Video className="w-3 h-3 sm:w-4 sm:h-4" />
+    <span className="truncate">الاجتماعات</span>
+  </TabsTrigger>
+  <TabsTrigger 
+    value="platformSettings" 
+    className="flex-1 flex flex-col items-center justify-center gap-1 py-2 text-xs sm:text-sm min-w-0"
+  >
+    <Settings className="w-3 h-3 sm:w-4 sm:h-4" />
+    <span className="truncate">الإعدادات</span>
+  </TabsTrigger>
+</TabsList>
           </motion.div>
         
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="mb-8">
-            <Card className="glass-effect border-0 shadow-xl bg-gradient-to-r from-purple-600/10 to-blue-600/10">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Brain className="w-6 h-6 text-purple-600" />
-                  تطبيقات الذكاء الاصطناعي للمعلم
-                </CardTitle>
-                <CardDescription>استكشف أدوات الذكاء الاصطناعي المساعدة لإنشاء المحتوى التعليمي والاختبارات بكفاءة.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-  {platformSettings?.teacherAiToolsList && platformSettings.teacherAiToolsList.length > 0 ? (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-      {platformSettings.teacherAiToolsList.map((tool, index) => (
-        <motion.div
-          key={tool.id}
-          initial={{ opacity: 0, scale: 0.95, y: 20 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          transition={{ delay: index * 0.1, duration: 0.4, ease: 'easeOut' }}
-          whileHover={{ scale: 1.03 }}
-          className="transition-transform duration-200"
-        >
-          <Button
-            variant="ghost"
-            className="w-full h-auto p-5 flex items-center justify-between rounded-2xl bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-md border border-purple-300/40 hover:border-purple-500 shadow-xl hover:shadow-2xl group transition-all duration-300"
-            onClick={() => window.open(tool.url, '_blank', 'noopener,noreferrer')}
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }} 
+            animate={{ opacity: 1, y: 0 }} 
+            transition={{ delay: 0.1 }} 
+            className="mb-4 sm:mb-8"
           >
-            {/* أيقونة */}
-            <Brain className="w-6 h-6 text-purple-500 group-hover:text-purple-600 transition" />
+            <Card className="glass-effect border-0 shadow-lg sm:shadow-xl bg-gradient-to-r from-purple-600/10 to-blue-600/10">
+              <CardHeader className="p-4 sm:p-6">
+                <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
+                  <Brain className="w-5 h-5 sm:w-6 sm:h-6 text-purple-600" />
+                  تطبيقات الذكاء الاصطناعي
+                </CardTitle>
+                <CardDescription className="text-sm sm:text-base">
+                  أدوات الذكاء الاصطناعي لإنشاء المحتوى التعليمي والاختبارات بكفاءة
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4 sm:space-y-6 p-4 sm:p-6">
+                {platformSettings?.teacherAiToolsList && platformSettings.teacherAiToolsList.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+                    {platformSettings.teacherAiToolsList.map((tool, index) => (
+                      <motion.div
+                        key={tool.id}
+                        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        transition={{ delay: index * 0.1, duration: 0.4, ease: 'easeOut' }}
+                        whileHover={{ scale: 1.03 }}
+                        className="transition-transform duration-200"
+                      >
+                        <Button
+                          variant="ghost"
+                          className="w-full h-auto p-3 sm:p-5 flex items-center justify-between rounded-xl sm:rounded-2xl bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-md border border-purple-300/40 hover:border-purple-500 shadow-lg hover:shadow-xl group transition-all duration-300"
+                          onClick={() => window.open(tool.url, '_blank', 'noopener,noreferrer')}
+                        >
+                          <Brain className="w-5 h-5 sm:w-6 sm:h-6 text-purple-500 group-hover:text-purple-600 transition" />
 
-            {/* النص */}
-            <div className="text-right flex-1 px-4">
-              <div className="font-bold text-base text-orange-500 group-hover:text-orange-600 transition">
-                {tool.name}
-              </div>
-              <p className="text-sm text-green-500 group-hover:text-green-600 transition">
-                فتح الغرفة
-              </p>
-            </div>
+                          <div className="text-right flex-1 px-3 sm:px-4">
+                            <div className="font-bold text-sm sm:text-base text-orange-500 group-hover:text-orange-600 transition">
+                              {tool.name}
+                            </div>
+                            <p className="text-xs sm:text-sm text-green-500 group-hover:text-green-600 transition">
+                              فتح الغرفة
+                            </p>
+                          </div>
 
-            {/* أيقونة الرابط */}
-            <ExternalLink className="w-5 h-5 text-purple-400 group-hover:text-purple-500 transition" />
-          </Button>
-        </motion.div>
-      ))}
-    </div>
-  ) : (
-    <div className="flex justify-center">
-      <Button 
-        onClick={() => window.open(platformSettings.teacherAiToolsUrl || 'https://app.magicschool.ai/tools', '_blank', 'noopener,noreferrer')} 
-        className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 px-6 py-3 text-white rounded-xl shadow-xl hover:shadow-2xl transition duration-300 flex items-center space-x-2"
-      >
-        <ExternalLink className="w-4 h-4 text-white" />
-        <span className="text-base font-semibold">فتح تطبيقات الذكاء الاصطناعي</span>
-      </Button>
-    </div>
-  )}
-</CardContent>
-
+                          <ExternalLink className="w-4 h-4 sm:w-5 sm:h-5 text-purple-400 group-hover:text-purple-500 transition" />
+                        </Button>
+                      </motion.div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="flex justify-center">
+                    <Button 
+                      onClick={() => window.open(platformSettings.teacherAiToolsUrl || 'https://app.magicschool.ai/tools', '_blank', 'noopener,noreferrer')} 
+                      className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 px-4 py-2 sm:px-6 sm:py-3 text-white rounded-lg sm:rounded-xl shadow-lg hover:shadow-xl transition duration-300 flex items-center space-x-2"
+                    >
+                      <ExternalLink className="w-3 h-3 sm:w-4 sm:h-4 text-white" />
+                      <span className="text-sm sm:text-base font-semibold">فتح تطبيقات الذكاء الاصطناعي</span>
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
             </Card>
           </motion.div>
 
-          <TabsContent value="content"><TeacherContentManager lessons={lessons} onLessonsUpdate={fetchStaticData} platformSettings={platformSettings} onSettingsUpdate={handleSettingsUpdate} /></TabsContent>
-          <TabsContent value="students"><TeacherStudentsManager students={students} onStudentsUpdate={fetchStaticData} lessons={lessons} studentProgress={studentProgress} /></TabsContent>
-          <TabsContent value="messages"><TeacherMessagesManager /></TabsContent>
-          <TabsContent value="meeting"><TeacherMeetingRoomManager platformSettings={platformSettings} onSettingsUpdate={handleSettingsUpdate} /></TabsContent>
-          <TabsContent value="platformSettings"><TeacherPlatformSettings platformSettings={platformSettings} onSettingsUpdate={handleSettingsUpdate} /></TabsContent>
+          <TabsContent value="content">
+            <TeacherContentManager 
+              lessons={lessons} 
+              onLessonsUpdate={fetchStaticData} 
+              platformSettings={platformSettings} 
+              onSettingsUpdate={handleSettingsUpdate} 
+            />
+          </TabsContent>
+          <TabsContent value="students">
+            <TeacherStudentsManager 
+              students={students} 
+              onStudentsUpdate={fetchStaticData} 
+              lessons={lessons} 
+              studentProgress={studentProgress} 
+            />
+          </TabsContent>
+          <TabsContent value="messages">
+            <TeacherMessagesManager />
+          </TabsContent>
+          <TabsContent value="meeting">
+            <TeacherMeetingRoomManager 
+              platformSettings={platformSettings} 
+              onSettingsUpdate={handleSettingsUpdate} 
+            />
+          </TabsContent>
+          <TabsContent value="platformSettings">
+            <TeacherPlatformSettings 
+              platformSettings={platformSettings} 
+              onSettingsUpdate={handleSettingsUpdate} 
+            />
+          </TabsContent>
         </Tabs>
       </div>
+
+      {/* نافذة المحادثة */}
       {chatModalOpen && chatTargetUser && (
         <ChatModal
           isOpen={chatModalOpen}
