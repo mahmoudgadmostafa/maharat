@@ -10,7 +10,7 @@ import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/com
 import LazyImage from '@/components/LazyImage';
 import LoadingSpinner from '@/components/LoadingSpinner';
 
-const LOGO_URL = "https://storage.googleapis.com/hostinger-horizons-assets-prod/3760d6a6-ab96-447b-8deb-dbeb7cec4327/ddb9811d5f3df3eb28c2f555087dd5ba.jpg";
+const LOGO_URL = "/favicon.png";
 
 const HomePage = () => {
   const [loginOpen, setLoginOpen] = useState(false);
@@ -52,12 +52,17 @@ const HomePage = () => {
       <header className="py-4 bg-white/80 backdrop-blur-sm shadow-sm sticky top-0 z-50">
         <div className="container mx-auto px-4 flex justify-between items-center">
           <div className="flex items-center space-x-3 space-x-reverse">
-            <LazyImage 
-              src={LOGO_URL} 
-              alt="شعار منصة مهارات التعليمية" 
-              className="h-12 w-auto"
-              placeholder={<div className="h-12 w-12 bg-purple-200 rounded animate-pulse"></div>}
-            />
+            <motion.div
+              animate={{ rotate: [0, 5, -5, 0] }}
+              transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
+            >
+              <LazyImage 
+                src={LOGO_URL} 
+                alt="شعار منصة مهارات التعليمية" 
+                className="h-12 w-auto"
+                placeholder={<div className="h-12 w-12 bg-purple-200 rounded animate-pulse"></div>}
+              />
+            </motion.div>
             <span className="text-2xl font-bold gradient-text">منصة مهارات التعليمية</span>
           </div>
         </div>
@@ -79,7 +84,7 @@ const HomePage = () => {
               transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
             >
               <LazyImage 
-                src={LOGO_URL} 
+                src="/og-image.png" 
                 alt="شعار منصة مهارات التعليمية يتأرجح" 
                 className="w-32 h-32 mx-auto rounded-full shadow-lg"
                 placeholder={<div className="w-32 h-32 mx-auto rounded-full bg-purple-200 animate-pulse"></div>}
@@ -94,14 +99,20 @@ const HomePage = () => {
               ابدأ رحلتك التعليمية بأسلوب تفاعلي مع أحدث تطبيقات الذكاء الاصطناعي
             </p>
             
-            <div className="flex gap-4 justify-center">
-              {/* زر تسجيل الدخول */}
+            <div className="flex flex-col sm:flex-row gap-6 justify-center items-center max-w-md mx-auto">
+              {/* زر تسجيل الدخول المحسن */}
               <Dialog open={loginOpen} onOpenChange={setLoginOpen}>
                 <DialogTrigger asChild>
-                  <Button>
-                    <User className="w-5 h-5 ml-2" />
-                    تسجيل الدخول
-                  </Button>
+                  <motion.div
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    className="w-full sm:w-auto"
+                  >
+                    <Button className="enhanced-login-btn w-full sm:w-auto">
+                      <User className="w-5 h-5 ml-2" />
+                      تسجيل الدخول
+                    </Button>
+                  </motion.div>
                 </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>
@@ -116,13 +127,19 @@ const HomePage = () => {
                 </DialogContent>
               </Dialog>
 
-              {/* زر إنشاء حساب */}
+              {/* زر إنشاء حساب المحسن */}
               <Dialog open={registerOpen} onOpenChange={setRegisterOpen}>
                 <DialogTrigger asChild>
-                  <Button variant="outline">
-                    <Sparkles className="w-5 h-5 ml-2" />
-                    إنشاء حساب جديد
-                  </Button>
+                  <motion.div
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    className="w-full sm:w-auto"
+                  >
+                    <Button className="enhanced-register-btn w-full sm:w-auto">
+                      <Sparkles className="w-5 h-5 ml-2" />
+                      إنشاء حساب جديد
+                    </Button>
+                  </motion.div>
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-md">
                   <DialogHeader>
@@ -313,3 +330,4 @@ const ContactCard = ({ icon, title, href, text, color }) => (
 );
 
 export default HomePage;
+

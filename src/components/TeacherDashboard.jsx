@@ -25,7 +25,7 @@ import { TeacherMeetingRoomManager } from '@/components/teacher/TeacherMeetingRo
 import { TeacherPlatformSettings } from '@/components/teacher/TeacherPlatformSettings';
 import { TeacherMessagesManager } from '@/components/teacher/TeacherMessagesManager';
 
-const LOGO_URL = "https://storage.googleapis.com/hostinger-horizons-assets-prod/3760d6a6-ab96-447b-8deb-dbeb7cec4327/ddb9811d5f3df3eb28c2f555087dd5ba.jpg";
+const LOGO_URL = "/favicon.png";
 
 const TeacherDashboard = () => {
   const { logout, currentUser } = useAuth();
@@ -256,7 +256,12 @@ const TeacherDashboard = () => {
         <div className="container mx-auto px-2 sm:px-4 py-2 sm:py-3">
           <div className="flex flex-col sm:flex-row justify-between items-center gap-2">
             <div className="flex items-center space-x-2 space-x-reverse">
-              <img src={LOGO_URL} alt="شعار منصة مهارات التعليمية" className="h-8 sm:h-10 w-auto" />
+              <motion.div
+                animate={{ rotate: [0, 5, -5, 0] }}
+                transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
+              >
+                <img src={LOGO_URL} alt="شعار منصة مهارات التعليمية" className="h-8 sm:h-10 w-auto" />
+              </motion.div>
               <div>
                 <h1 className="text-lg sm:text-xl font-bold gradient-text">لوحة تحكم المعلم</h1>
                 {userData && (

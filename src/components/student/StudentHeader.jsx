@@ -5,6 +5,7 @@ import { LogOut, User, Bell, MessageSquare, CheckCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { db } from '@/lib/firebase';
 import { collection, query, where, onSnapshot, orderBy, doc, updateDoc, serverTimestamp, getDocs, addDoc } from 'firebase/firestore';
+import { motion } from 'framer-motion';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,7 +19,7 @@ import { ChatModal } from '@/components/common/ChatModal';
 import { toast } from '@/components/ui/use-toast';
 
 
-const LOGO_URL = "https://storage.googleapis.com/hostinger-horizons-assets-prod/3760d6a6-ab96-447b-8deb-dbeb7cec4327/ddb9811d5f3df3eb28c2f555087dd5ba.jpg";
+const LOGO_URL = "/favicon.png";
 
 const StudentHeader = ({ userData, onLogout }) => {
   const { currentUser } = useAuth();
@@ -167,7 +168,12 @@ const StudentHeader = ({ userData, onLogout }) => {
         <div className="container mx-auto px-4 py-3">
           <div className="flex justify-between items-center">
             <div className="flex flex-col sm:flex-row items-center sm:space-x-3 sm:space-x-reverse">
-              <img src={LOGO_URL} alt="شعار منصة مهارات التعليمية" className="h-10 w-auto" />
+              <motion.div
+                animate={{ rotate: [0, 5, -5, 0] }}
+                transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
+              >
+                <img src={LOGO_URL} alt="شعار منصة مهارات التعليمية" className="h-10 w-auto" />
+              </motion.div>
               <div className="text-center sm:text-right mt-2 sm:mt-0">
                 <h1 className="text-xl font-bold gradient-text-alt">لوحة تحكم المتعلم</h1>
                 {userData && (

@@ -58,10 +58,17 @@ export const TeacherLessonsManager = ({ lessons, onLessonsUpdate }) => {
         });
       }
       
-            setLessonData({ lessonNumber: '', title: '', videoUrl: '', pdfUrl: '', quizUrl: '', learningOutcomes: [] });
+      setLessonData({ 
+        lessonNumber: '', 
+        title: '', 
+        videoUrl: '', 
+        pdfUrl: '', 
+        quizUrl: '', 
+        learningOutcomes: [] 
+      });
       setAddLessonOpen(false);
       setEditingLesson(null);
-      onLessonsUpdate(); // Callback to refresh lessons in parent
+      onLessonsUpdate();
     } catch (error) {
       toast({
         title: "خطأ في حفظ الدرس",
@@ -78,7 +85,7 @@ export const TeacherLessonsManager = ({ lessons, onLessonsUpdate }) => {
       title: lesson.title,
       videoUrl: lesson.videoUrl || '',
       pdfUrl: lesson.pdfUrl || '',
-      quizUrl: lesson.quizUrl || "",
+      quizUrl: lesson.quizUrl || '',
       learningOutcomes: lesson.learningOutcomes || []
     });
     setAddLessonOpen(true);
@@ -92,7 +99,7 @@ export const TeacherLessonsManager = ({ lessons, onLessonsUpdate }) => {
           title: "تم حذف الدرس",
           description: "تم حذف الدرس بنجاح",
         });
-        onLessonsUpdate(); // Callback to refresh lessons in parent
+        onLessonsUpdate();
       } catch (error) {
         toast({
           title: "خطأ في حذف الدرس",
@@ -101,6 +108,12 @@ export const TeacherLessonsManager = ({ lessons, onLessonsUpdate }) => {
         });
       }
     }
+  };
+
+  const formatFirebaseDate = (date) => {
+    if (!date) return 'غير معروف';
+    if (date.seconds) return new Date(date.seconds * 1000).toLocaleDateString('ar-EG');
+    return new Date(date).toLocaleDateString('ar-EG');
   };
 
   return (
@@ -112,13 +125,32 @@ export const TeacherLessonsManager = ({ lessons, onLessonsUpdate }) => {
     >
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-3xl font-bold gradient-text">إدارة الدروس</h2>
-        <Dialog open={addLessonOpen} onOpenChange={(open) => {
-          setAddLessonOpen(open);
-          if (!open) {
-            setEditingLesson(null);
-            setLessonData({ lessonNumber: '', title: '', videoUrl: '', pdfUrl: '', quizUrl: ''});
-          }
-        }}>
+        <Dialog 
+          open={addLessonOpen} 
+          onOpenChange={(open) => {
+            try {
+              setAddLessonOpen(open);
+              if (!open) {
+                setLessonData({
+                  lessonNumber: '',
+                  title: '',
+                  videoUrl: '',
+                  pdfUrl: '',
+                  quizUrl: '',
+                  learningOutcomes: []
+                });
+                setEditingLesson(null);
+              }
+            } catch (error) {
+              console.error("Error handling dialog close:", error);
+              toast({
+                title: "حدث خطأ",
+                description: "حدث خطأ أثناء معالجة العملية، يرجى المحاولة مرة أخرى",
+                variant: "destructive",
+              });
+            }
+          }}
+        >
           <DialogTrigger asChild>
             <Button className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700">
               <Plus className="w-4 h-4 ml-2" />
@@ -234,12 +266,12 @@ export const TeacherLessonsManager = ({ lessons, onLessonsUpdate }) => {
                         {lesson.title}
                       </CardTitle>
                       <CardDescription className="mt-2 text-xs">
-                        تاريخ الإنشاء: {lesson.createdAt ? new Date(lesson.createdAt.seconds ? lesson.createdAt.seconds * 1000 : lesson.createdAt).toLocaleDateString('ar-EG') : 'غير معروف'}
+                        تاريخ الإنشاء: {formatFirebaseDate(lesson.createdAt)}
                         {lesson.updatedAt && (
                           <span className="block">
-                            آخر تحديث: {new Date(lesson.updatedAt.seconds ? lesson.updatedAt.seconds * 1000 : lesson.updatedAt).toLocaleDateString('ar-EG')}
+                            آخر تحديث: {formatFirebaseDate(lesson.updatedAt)}
                           </span>
-                         )}
+                        )}
                       </CardDescription>
                     </div>
                     <div className="flex gap-2">
