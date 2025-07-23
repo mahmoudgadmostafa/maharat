@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
-import { Users, UserPlus, MessageSquare, Mail, Edit, Trash2, Send, Download } from 'lucide-react';
+import { Users, UserPlus, MessageSquare, Mail, Edit, Trash2, Send, Download, ChevronDown, Menu } from 'lucide-react';
 import { auth as studentAuth, db } from '@/lib/firebase';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import {
@@ -16,11 +16,12 @@ import {
   query, where, orderBy, onSnapshot, Timestamp, serverTimestamp,
   getDocs, getDoc, limit
 } from 'firebase/firestore';
-import { useAuth } from '@/contexts/AuthContext'; // Corrected import path
+import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/components/ui/use-toast';
 import { ChatModal } from '@/components/common/ChatModal';
 import { Progress } from '@/components/ui/progress';
 import * as XLSX from 'xlsx';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 export const TeacherStudentsManager = ({ students, onStudentsUpdate }) => {
   const { currentUser } = useAuth();
@@ -29,6 +30,8 @@ export const TeacherStudentsManager = ({ students, onStudentsUpdate }) => {
   const [editingStudent, setEditingStudent] = useState(null);
   const [studentData, setStudentData] = useState({ name: "", email: "", password: "", group: "", code: "", phone: "" });
   const [isGeneratingCredentials, setIsGeneratingCredentials] = useState(false);
+  const [selectedGroup, setSelectedGroup] = useState('الكل');
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     console.log("manageStudentOpen:", manageStudentOpen, "editingStudent:", editingStudent);
@@ -79,7 +82,6 @@ export const TeacherStudentsManager = ({ students, onStudentsUpdate }) => {
       setStudentData({ name: "", email: "", password: "", group: "", code: "", phone: "" });
     }
   }, [manageStudentOpen, editingStudent]);
-  const [selectedGroup, setSelectedGroup] = useState('الكل');
 
   const [chatModalOpen, setChatModalOpen] = useState(false);
   const [currentTargetUser, setCurrentTargetUser] = useState(null);
@@ -165,19 +167,9 @@ export const TeacherStudentsManager = ({ students, onStudentsUpdate }) => {
         await updateDoc(doc(db, 'users', editingStudent.id), { name, group, phone });
         toast({ title: 'تم تحديث بيانات الطالب' });
       } else {
-        // Create user without signing them in (Firebase automatically signs in new users)
-        // We will create the user and then immediately sign out the newly created user
-        // to keep the teacher's session active.
         const userCredential = await createUserWithEmailAndPassword(studentAuth, email, password);
         const user = userCredential.user;
-
-        // Sign out the newly created user to maintain the teacher's session
         await studentAuth.signOut();
-
-        // Re-sign in the teacher if their session was affected (this depends on your AuthContext implementation)
-        // If useAuth() manages the teacher's session, it should automatically re-establish it.
-        // If not, you might need to explicitly sign in the teacher here using their credentials.
-        // For now, assuming AuthContext handles teacher session persistence.
 
         await setDoc(doc(db, 'users', user.uid), {
           uid: user.uid,
@@ -186,7 +178,7 @@ export const TeacherStudentsManager = ({ students, onStudentsUpdate }) => {
           group,
           code,
           phone,
-          password, // Storing password in Firestore is generally not recommended for security. Consider hashing or not storing it at all.
+          password,
           role: 'student',
           createdAt: Timestamp.now(),
         });
@@ -202,7 +194,7 @@ export const TeacherStudentsManager = ({ students, onStudentsUpdate }) => {
     }
   };
 
-    const handleEditStudent = (student) => {
+  const handleEditStudent = (student) => {
     setEditingStudent(student);
     setStudentData({ name: student.name, email: student.email, password: '', group: student.group || '', code: student.code || '', phone: student.phone || '' });
     setManageStudentOpen(true);
@@ -244,7 +236,6 @@ export const TeacherStudentsManager = ({ students, onStudentsUpdate }) => {
 
   const exportToExcel = () => {
     try {
-      // تحضير البيانات للتصدير
       const dataToExport = filteredStudents.map((student, index) => ({
         'الرقم': index + 1,
         'الاسم': student.name || '',
@@ -264,36 +255,23 @@ export const TeacherStudentsManager = ({ students, onStudentsUpdate }) => {
           : '0%'
       }));
 
-      // إنشاء ورقة عمل
       const worksheet = XLSX.utils.json_to_sheet(dataToExport);
-      
-      // تحسين عرض الأعمدة
       const columnWidths = [
-        { wch: 8 },   // الرقم
-        { wch: 20 },  // الاسم
-        { wch: 25 },  // البريد الإلكتروني
-        { wch: 10 },  // الكود
-        { wch: 15 },  // كلمة المرور
-        { wch: 15 },  // رقم الهاتف
-        { wch: 15 },  // المجموعة
-        { wch: 15 },  // تاريخ التسجيل
-        { wch: 15 },  // الدروس المكتملة
-        { wch: 12 }   // نسبة التقدم
+        { wch: 8 }, { wch: 20 }, { wch: 25 }, { wch: 10 },
+        { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 15 },
+        { wch: 15 }, { wch: 12 }
       ];
       worksheet['!cols'] = columnWidths;
 
-      // إنشاء كتاب العمل
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, 'بيانات الطلاب');
 
-      // تحديد اسم الملف مع التاريخ والوقت
       const now = new Date();
       const dateStr = now.toLocaleDateString('ar-EG').replace(/\//g, '-');
       const timeStr = now.toLocaleTimeString('ar-EG', { hour12: false }).replace(/:/g, '-');
       const groupName = selectedGroup === 'الكل' ? 'جميع_الطلاب' : selectedGroup.replace(/\s+/g, '_');
       const fileName = `بيانات_الطلاب_${groupName}_${dateStr}_${timeStr}.xlsx`;
 
-      // تحميل الملف
       XLSX.writeFile(workbook, fileName);
       
       toast({ 
@@ -321,40 +299,104 @@ export const TeacherStudentsManager = ({ students, onStudentsUpdate }) => {
     setChatModalOpen(true);
   };
 
+  // دالة لتحديد الأعمدة التي تظهر على الأجهزة الصغيرة
+  const shouldShowColumn = (columnName) => {
+    if (typeof window === 'undefined') return true;
+    return window.innerWidth > 768 || ['الاسم', 'المجموعة', 'التقدّم', 'خيارات'].includes(columnName);
+  };
+
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8">
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8 p-2 md:p-4">
       <Card>
-        <CardHeader className="flex justify-between items-center">
-          <CardTitle className="flex items-center gap-2"><Users className="w-6 h-6 text-blue-600" /> إدارة الطلاب</CardTitle>
-          <div className="flex gap-2 items-center">
-            <select value={selectedGroup} onChange={(e) => setSelectedGroup(e.target.value)} className="border px-3 py-1 rounded-md text-sm">
+        <CardHeader className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <CardTitle className="flex items-center gap-2">
+            <Users className="w-6 h-6 text-blue-600" /> 
+            <span className="text-lg md:text-xl">إدارة الطلاب</span>
+          </CardTitle>
+          
+          <div className="w-full md:w-auto flex flex-col md:flex-row gap-2 items-stretch md:items-center">
+            {/* Mobile menu button */}
+            <div className="md:hidden">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="w-full">
+                    <Menu className="w-4 h-4 ml-2" /> القائمة
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuItem onClick={() => setMassMessageModalOpen(true)}>
+                    <MessageSquare className="w-4 h-4 ml-2" /> رسالة للمجموعة
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={exportToExcel}>
+                    <Download className="w-4 h-4 ml-2" /> تصدير إكسل
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+
+            <select 
+              value={selectedGroup} 
+              onChange={(e) => setSelectedGroup(e.target.value)} 
+              className="border px-3 py-2 rounded-md text-sm w-full md:w-auto"
+            >
               {groups.map(g => <option key={g} value={g}>{g}</option>)}
             </select>
-            <Button 
-              variant="outline" 
-              onClick={exportToExcel}
-              className="bg-green-50 hover:bg-green-100 text-green-700 border-green-300"
-            >
-              <Download className="w-4 h-4 ml-2" /> 
-              تصدير إكسل
-            </Button>
-            <Button variant="outline" onClick={() => setMassMessageModalOpen(true)}>
-              <MessageSquare className="w-4 h-4 ml-2" /> رسالة للمجموعة
-            </Button>
+
+            <div className="hidden md:flex gap-2">
+              <Button 
+                variant="outline" 
+                onClick={exportToExcel}
+                className="bg-green-50 hover:bg-green-100 text-green-700 border-green-300"
+              >
+                <Download className="w-4 h-4 ml-2" /> 
+                تصدير إكسل
+              </Button>
+              <Button variant="outline" onClick={() => setMassMessageModalOpen(true)}>
+                <MessageSquare className="w-4 h-4 ml-2" /> رسالة للمجموعة
+              </Button>
+            </div>
+
             <Dialog open={manageStudentOpen} onOpenChange={(v) => { setManageStudentOpen(v); if (!v) setEditingStudent(null); }}>
               <DialogTrigger asChild>
-                <Button><UserPlus className="w-4 h-4 ml-2" /> {editingStudent ? 'تعديل طالب' : 'إضافة طالب'}</Button>
+                <Button className="w-full md:w-auto">
+                  <UserPlus className="w-4 h-4 ml-2" /> 
+                  {editingStudent ? 'تعديل طالب' : 'إضافة طالب'}
+                </Button>
               </DialogTrigger>
-              <DialogContent>
-                <DialogHeader><DialogTitle>{editingStudent ? 'تعديل بيانات الطالب' : 'إضافة طالب جديد'}</DialogTitle></DialogHeader>
+              <DialogContent className="max-w-[95vw] md:max-w-md">
+                <DialogHeader>
+                  <DialogTitle>{editingStudent ? 'تعديل بيانات الطالب' : 'إضافة طالب جديد'}</DialogTitle>
+                </DialogHeader>
                 <form onSubmit={handleManageStudent} className="space-y-4">
-                  <div><Label>الاسم</Label><Input value={studentData.name} onChange={(e) => setStudentData({ ...studentData, name: e.target.value })} required /></div>
-                  <div><Label>الكود</Label><Input value={studentData.code} onChange={(e) => setStudentData({ ...studentData, code: e.target.value })} readOnly /></div>
-                  <div><Label>البريد</Label><Input type="email" value={studentData.email} onChange={(e) => setStudentData({ ...studentData, email: e.target.value })} required readOnly /></div>
-                  <div><Label>المجموعة</Label><Input value={studentData.group} onChange={(e) => setStudentData({ ...studentData, group: e.target.value })} placeholder="مثل: مجموعة 1" /></div>
-                  <div><Label>رقم الهاتف (اختياري)</Label><Input type="tel" value={studentData.phone} onChange={(e) => setStudentData({ ...studentData, phone: e.target.value })} /></div>
-                  <div><Label>كلمة المرور {editingStudent && '(اختياري)'}</Label><Input type="password" value={studentData.password} onChange={(e) => setStudentData({ ...studentData, password: e.target.value })} required={!editingStudent} /></div>
-                  <DialogFooter><Button type="submit">{editingStudent ? 'حفظ التعديل' : 'إضافة الطالب'}</Button></DialogFooter>
+                  <div>
+                    <Label>الاسم</Label>
+                    <Input value={studentData.name} onChange={(e) => setStudentData({ ...studentData, name: e.target.value })} required />
+                  </div>
+                  <div>
+                    <Label>الكود</Label>
+                    <Input value={studentData.code} onChange={(e) => setStudentData({ ...studentData, code: e.target.value })} readOnly />
+                  </div>
+                  <div>
+                    <Label>البريد</Label>
+                    <Input type="email" value={studentData.email} onChange={(e) => setStudentData({ ...studentData, email: e.target.value })} required readOnly />
+                  </div>
+                  <div>
+                    <Label>المجموعة</Label>
+                    <Input value={studentData.group} onChange={(e) => setStudentData({ ...studentData, group: e.target.value })} placeholder="مثل: مجموعة 1" />
+                  </div>
+                  <div>
+                    <Label>رقم الهاتف (اختياري)</Label>
+                    <Input type="tel" value={studentData.phone} onChange={(e) => setStudentData({ ...studentData, phone: e.target.value })} />
+                  </div>
+                  <div>
+                    <Label>كلمة المرور {editingStudent && '(اختياري)'}</Label>
+                    <Input type="password" value={studentData.password} onChange={(e) => setStudentData({ ...studentData, password: e.target.value })} required={!editingStudent} />
+                  </div>
+                  <DialogFooter>
+                    <Button type="submit" className="w-full md:w-auto">
+                      {editingStudent ? 'حفظ التعديل' : 'إضافة الطالب'}
+                    </Button>
+                  </DialogFooter>
                 </form>
               </DialogContent>
             </Dialog>
@@ -365,68 +407,83 @@ export const TeacherStudentsManager = ({ students, onStudentsUpdate }) => {
           {filteredStudents.length === 0 ? (
             <p className="text-center py-10 text-gray-500">لا يوجد طلاب في هذه المجموعة</p>
           ) : (
-            <Table className="border-collapse border border-gray-300" dir="rtl">
-  <TableHeader>
-    <TableRow className="bg-gray-100 text-gray-700 text-sm border-b border-gray-300">
-      <TableHead className="font-semibold text-center border-r border-gray-300">الاسم</TableHead>
-      <TableHead className="font-semibold text-center border-r border-gray-300">البريد الإلكتروني</TableHead>
-      <TableHead className="font-semibold text-center border-r border-gray-300">الكود</TableHead>
-      <TableHead className="font-semibold text-center border-r border-gray-300">الرقم السري</TableHead>
-      <TableHead className="font-semibold text-center border-r border-gray-300">رقم الهاتف</TableHead>
-      <TableHead className="font-semibold text-center border-r border-gray-300">المجموعة</TableHead>
-      <TableHead className="font-semibold text-center border-r border-gray-300">تاريخ التسجيل</TableHead>
-      <TableHead className="font-semibold text-center">التقدّم</TableHead>
-      <TableHead className="font-semibold text-center">خيارات</TableHead>
-    </TableRow>
-  </TableHeader>
-  <TableBody>
-    {filteredStudents.map(student => (
-      <TableRow key={student.id} className="border-b border-gray-200">
-        <TableCell className="border-r border-gray-200">{student.name}</TableCell>
-        <TableCell className="border-r border-gray-200">{student.email}</TableCell>
-        <TableCell className="border-r border-gray-200">{student.code}</TableCell>
-        <TableCell className="border-r border-gray-200">{student.password}</TableCell>
-        <TableCell className="border-r border-gray-200">{student.phone}</TableCell>
-        <TableCell className="border-r border-gray-200">{student.group || 'بدون مجموعة'}</TableCell>
-        <TableCell className="border-r border-gray-200">
-          {student.createdAt ? new Date(student.createdAt.seconds * 1000).toLocaleDateString('ar-EG') : 'غير معروف'}
-        </TableCell>
-        <TableCell className="border-r border-gray-200">
-          {typeof student.completedLessonsCount === 'number' && student.totalLessons > 0 ? (
-            <div className="flex flex-col gap-1">
-              {student.completedLessonsCount} / {student.totalLessons} دروس مكتملة
-              <br />
-              <Progress value={Math.round((student.completedLessonsCount / student.totalLessons) * 100)} />
-              <div className="text-xs text-muted-foreground text-end">
-                {Math.round((student.completedLessonsCount / student.totalLessons) * 100)}%
-              </div>
-            </div>
-          ) : (
-            <span className="text-xs text-muted-foreground">لا بيانات</span>
-          )}
-        </TableCell>
-        <TableCell className="text-center space-x-1 space-x-reverse">
-          <Button size="sm" onClick={() => openChatWithStudent(student)}><Mail className="w-4 h-4" /></Button>
-          <Button size="sm" onClick={() => handleEditStudent(student)}><Edit className="w-4 h-4" /></Button>
-          <Button size="sm" onClick={() => handleDeleteStudent(student.id)} className="text-red-600"><Trash2 className="w-4 h-4" /></Button>
-        </TableCell>
+            <div className="overflow-x-auto">
+  <Table className="min-w-full border-collapse border border-gray-300" dir="rtl">
+    <TableHeader>
+      <TableRow className="bg-gray-100 text-gray-700 text-sm border-b border-gray-300">
+        {shouldShowColumn('الاسم') && <TableHead className="font-semibold text-center border-l border-gray-300">الاسم</TableHead>}
+        {shouldShowColumn('البريد الإلكتروني') && <TableHead className="font-semibold text-center border-l border-gray-300">البريد الإلكتروني</TableHead>}
+        {shouldShowColumn('الكود') && <TableHead className="font-semibold text-center border-l border-gray-300">الكود</TableHead>}
+        {shouldShowColumn('الرقم السري') && <TableHead className="font-semibold text-center border-l border-gray-300">الرقم السري</TableHead>}
+        {shouldShowColumn('رقم الهاتف') && <TableHead className="font-semibold text-center border-l border-gray-300">رقم الهاتف</TableHead>}
+        {shouldShowColumn('المجموعة') && <TableHead className="font-semibold text-center border-l border-gray-300">المجموعة</TableHead>}
+        {shouldShowColumn('تاريخ التسجيل') && <TableHead className="font-semibold text-center border-l border-gray-300">تاريخ التسجيل</TableHead>}
+        {shouldShowColumn('التقدّم') && <TableHead className="font-semibold text-center border-l border-gray-300">التقدّم</TableHead>}
+        <TableHead className="font-semibold text-center">خيارات</TableHead>
       </TableRow>
-    ))}
-  </TableBody>
-</Table>
+    </TableHeader>
+    <TableBody>
+      {filteredStudents.map(student => (
+        <TableRow key={student.id} className="border-b border-gray-200 hover:bg-gray-50">
+          {shouldShowColumn('الاسم') && <TableCell className="border-l border-gray-200 text-right">{student.name}</TableCell>}
+          {shouldShowColumn('البريد الإلكتروني') && <TableCell className="border-l border-gray-200 text-right">{student.email}</TableCell>}
+          {shouldShowColumn('الكود') && <TableCell className="border-l border-gray-200 text-right">{student.code}</TableCell>}
+          {shouldShowColumn('الرقم السري') && <TableCell className="border-l border-gray-200 text-right">{student.password}</TableCell>}
+          {shouldShowColumn('رقم الهاتف') && <TableCell className="border-l border-gray-200 text-right">{student.phone}</TableCell>}
+          {shouldShowColumn('المجموعة') && <TableCell className="border-l border-gray-200 text-right">{student.group || 'بدون مجموعة'}</TableCell>}
+          {shouldShowColumn('تاريخ التسجيل') && (
+            <TableCell className="border-l border-gray-200 text-right">
+              {student.createdAt ? new Date(student.createdAt.seconds * 1000).toLocaleDateString('ar-EG') : 'غير معروف'}
+            </TableCell>
+          )}
+          {shouldShowColumn('التقدّم') && (
+            <TableCell className="border-l border-gray-200">
+              {typeof student.completedLessonsCount === 'number' && student.totalLessons > 0 ? (
+                <div className="flex flex-col gap-1 text-right">
+                  {student.completedLessonsCount} / {student.totalLessons} دروس مكتملة
+                  <br />
+                  <Progress value={Math.round((student.completedLessonsCount / student.totalLessons) * 100)} />
+                  <div className="text-xs text-muted-foreground">
+                    {Math.round((student.completedLessonsCount / student.totalLessons) * 100)}%
+                  </div>
+                </div>
+              ) : (
+                <span className="text-xs text-muted-foreground text-right">لا بيانات</span>
+              )}
+            </TableCell>
+          )}
+          <TableCell className="text-center space-x-1 space-x-reverse">
+            <Button size="sm" onClick={() => openChatWithStudent(student)}><Mail className="w-4 h-4" /></Button>
+            <Button size="sm" onClick={() => handleEditStudent(student)}><Edit className="w-4 h-4" /></Button>
+            <Button size="sm" onClick={() => handleDeleteStudent(student.id)} className="text-red-600"><Trash2 className="w-4 h-4" /></Button>
+          </TableCell>
+        </TableRow>
+      ))}
+    </TableBody>
+  </Table>
+</div>
           )}
         </CardContent>
         <CardFooter className="text-sm text-muted-foreground">المجموع الكلي: {filteredStudents.length} طالب</CardFooter>
       </Card>
 
       <Dialog open={massMessageModalOpen} onOpenChange={setMassMessageModalOpen}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>إرسال رسالة إلى {selectedGroup}</DialogTitle></DialogHeader>
+        <DialogContent className="max-w-[95vw] md:max-w-md">
+          <DialogHeader>
+            <DialogTitle>إرسال رسالة إلى {selectedGroup}</DialogTitle>
+          </DialogHeader>
           <div className="space-y-3">
             <Label>محتوى الرسالة</Label>
-            <Textarea value={massMessageContent} onChange={(e) => setMassMessageContent(e.target.value)} rows={4} />
+            <Textarea 
+              value={massMessageContent} 
+              onChange={(e) => setMassMessageContent(e.target.value)} 
+              rows={4}
+              className="min-h-[150px]"
+            />
             <DialogFooter>
-              <Button onClick={handleSendMassMessage}><Send className="w-4 h-4 ml-2" /> إرسال</Button>
+              <Button onClick={handleSendMassMessage} className="w-full md:w-auto">
+                <Send className="w-4 h-4 ml-2" /> إرسال
+              </Button>
             </DialogFooter>
           </div>
         </DialogContent>
@@ -452,6 +509,7 @@ export const TeacherStudentsManager = ({ students, onStudentsUpdate }) => {
           onDeleteMessages={(deletedIds) => {
             setMessages(prev => prev.filter(msg => !deletedIds.includes(msg.id)));
           }}
+          className="max-w-[95vw] w-[95vw] md:max-w-md md:w-full"
         />
       )}
     </motion.div>
