@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
-import { Users, UserPlus, MessageSquare, Mail, Edit, Trash2, Send } from 'lucide-react';
+import { Users, UserPlus, MessageSquare, Mail, Edit, Trash2, Send, Download } from 'lucide-react';
 import { auth as studentAuth, db } from '@/lib/firebase';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import {
@@ -20,6 +20,7 @@ import { useAuth } from '@/contexts/AuthContext'; // Corrected import path
 import { toast } from '@/components/ui/use-toast';
 import { ChatModal } from '@/components/common/ChatModal';
 import { Progress } from '@/components/ui/progress';
+import * as XLSX from 'xlsx';
 
 export const TeacherStudentsManager = ({ students, onStudentsUpdate }) => {
   const { currentUser } = useAuth();
@@ -241,6 +242,74 @@ export const TeacherStudentsManager = ({ students, onStudentsUpdate }) => {
     setMassMessageModalOpen(false);
   };
 
+  const exportToExcel = () => {
+    try {
+      // تحضير البيانات للتصدير
+      const dataToExport = filteredStudents.map((student, index) => ({
+        'الرقم': index + 1,
+        'الاسم': student.name || '',
+        'البريد الإلكتروني': student.email || '',
+        'الكود': student.code || '',
+        'كلمة المرور': student.password || '',
+        'رقم الهاتف': student.phone || '',
+        'المجموعة': student.group || 'بدون مجموعة',
+        'تاريخ التسجيل': student.createdAt 
+          ? new Date(student.createdAt.seconds * 1000).toLocaleDateString('ar-EG')
+          : 'غير معروف',
+        'الدروس المكتملة': typeof student.completedLessonsCount === 'number' 
+          ? `${student.completedLessonsCount} / ${student.totalLessons || 0}`
+          : 'لا بيانات',
+        'نسبة التقدم': typeof student.completedLessonsCount === 'number' && student.totalLessons > 0
+          ? `${Math.round((student.completedLessonsCount / student.totalLessons) * 100)}%`
+          : '0%'
+      }));
+
+      // إنشاء ورقة عمل
+      const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+      
+      // تحسين عرض الأعمدة
+      const columnWidths = [
+        { wch: 8 },   // الرقم
+        { wch: 20 },  // الاسم
+        { wch: 25 },  // البريد الإلكتروني
+        { wch: 10 },  // الكود
+        { wch: 15 },  // كلمة المرور
+        { wch: 15 },  // رقم الهاتف
+        { wch: 15 },  // المجموعة
+        { wch: 15 },  // تاريخ التسجيل
+        { wch: 15 },  // الدروس المكتملة
+        { wch: 12 }   // نسبة التقدم
+      ];
+      worksheet['!cols'] = columnWidths;
+
+      // إنشاء كتاب العمل
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'بيانات الطلاب');
+
+      // تحديد اسم الملف مع التاريخ والوقت
+      const now = new Date();
+      const dateStr = now.toLocaleDateString('ar-EG').replace(/\//g, '-');
+      const timeStr = now.toLocaleTimeString('ar-EG', { hour12: false }).replace(/:/g, '-');
+      const groupName = selectedGroup === 'الكل' ? 'جميع_الطلاب' : selectedGroup.replace(/\s+/g, '_');
+      const fileName = `بيانات_الطلاب_${groupName}_${dateStr}_${timeStr}.xlsx`;
+
+      // تحميل الملف
+      XLSX.writeFile(workbook, fileName);
+      
+      toast({ 
+        title: 'تم تصدير البيانات بنجاح', 
+        description: `تم تحميل ملف ${fileName}` 
+      });
+    } catch (error) {
+      console.error('خطأ في تصدير البيانات:', error);
+      toast({ 
+        title: 'خطأ في التصدير', 
+        description: 'حدث خطأ أثناء تصدير البيانات إلى ملف إكسل',
+        variant: 'destructive' 
+      });
+    }
+  };
+
   const groups = ['الكل', ...new Set(processedStudents.map(s => s.group || 'بدون مجموعة'))];
 
   const filteredStudents = selectedGroup === 'الكل'
@@ -261,6 +330,14 @@ export const TeacherStudentsManager = ({ students, onStudentsUpdate }) => {
             <select value={selectedGroup} onChange={(e) => setSelectedGroup(e.target.value)} className="border px-3 py-1 rounded-md text-sm">
               {groups.map(g => <option key={g} value={g}>{g}</option>)}
             </select>
+            <Button 
+              variant="outline" 
+              onClick={exportToExcel}
+              className="bg-green-50 hover:bg-green-100 text-green-700 border-green-300"
+            >
+              <Download className="w-4 h-4 ml-2" /> 
+              تصدير إكسل
+            </Button>
             <Button variant="outline" onClick={() => setMassMessageModalOpen(true)}>
               <MessageSquare className="w-4 h-4 ml-2" /> رسالة للمجموعة
             </Button>
