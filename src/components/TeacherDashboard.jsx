@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, memo, useMemo, Suspense, lazy } from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { LogOut, User, Users, Video, Settings, Brain, ExternalLink, Edit3, MessageSquare, Bell } from 'lucide-react';
+import { LogOut, User, Users, Video, Settings, Brain, ExternalLink, Edit3, MessageSquare, Bell, BarChart3 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { collection, getDocs, doc, getDoc, setDoc, onSnapshot, query, where, orderBy, updateDoc, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -18,16 +18,19 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Badge } from '@/components/ui/badge';
 import { ChatModal } from '@/components/common/ChatModal';
+import LoadingSpinner from '@/components/LoadingSpinner';
 
-import { TeacherContentManager } from '@/components/teacher/TeacherContentManager';
-import { TeacherStudentsManager } from '@/components/teacher/TeacherStudentsManager';
-import { TeacherMeetingRoomManager } from '@/components/teacher/TeacherMeetingRoomManager';
-import { TeacherPlatformSettings } from '@/components/teacher/TeacherPlatformSettings';
-import { TeacherMessagesManager } from '@/components/teacher/TeacherMessagesManager';
+// Lazy loading للمكونات الفرعية
+const TeacherContentManager = lazy(() => import('@/components/teacher/TeacherContentManager').then(module => ({ default: module.TeacherContentManager })));
+const TeacherStudentsManager = lazy(() => import('@/components/teacher/TeacherStudentsManager').then(module => ({ default: module.TeacherStudentsManager })));
+const TeacherMeetingRoomManager = lazy(() => import('@/components/teacher/TeacherMeetingRoomManager').then(module => ({ default: module.TeacherMeetingRoomManager })));
+const TeacherPlatformSettings = lazy(() => import('@/components/teacher/TeacherPlatformSettings').then(module => ({ default: module.TeacherPlatformSettings })));
+const TeacherMessagesManager = lazy(() => import('@/components/teacher/TeacherMessagesManager').then(module => ({ default: module.TeacherMessagesManager })));
+const TeacherAnalytics = lazy(() => import('@/components/teacher/TeacherAnalytics'));
 
 const LOGO_URL = "/favicon.png";
 
-const TeacherDashboard = () => {
+const TeacherDashboard = memo(() => {
   const { logout, currentUser } = useAuth();
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -355,6 +358,13 @@ const TeacherDashboard = () => {
     <span className="truncate">الرسائل</span>
   </TabsTrigger>
   <TabsTrigger 
+    value="analytics" 
+    className="flex-1 flex flex-col items-center justify-center gap-1 py-2 text-xs sm:text-sm min-w-0"
+  >
+    <BarChart3 className="w-3 h-3 sm:w-4 sm:h-4" />
+    <span className="truncate">التحليلات</span>
+  </TabsTrigger>
+  <TabsTrigger 
     value="meeting" 
     className="flex-1 flex flex-col items-center justify-center gap-1 py-2 text-xs sm:text-sm min-w-0"
   >
@@ -436,35 +446,54 @@ const TeacherDashboard = () => {
           </motion.div>
 
           <TabsContent value="content">
-            <TeacherContentManager 
-              lessons={lessons} 
-              onLessonsUpdate={fetchStaticData} 
-              platformSettings={platformSettings} 
-              onSettingsUpdate={handleSettingsUpdate} 
-            />
+            <Suspense fallback={<LoadingSpinner />}>
+              <TeacherContentManager 
+                lessons={lessons} 
+                onLessonsUpdate={fetchStaticData} 
+                platformSettings={platformSettings} 
+                onSettingsUpdate={handleSettingsUpdate} 
+              />
+            </Suspense>
           </TabsContent>
           <TabsContent value="students">
-            <TeacherStudentsManager 
-              students={students} 
-              onStudentsUpdate={fetchStaticData} 
-              lessons={lessons} 
-              studentProgress={studentProgress} 
-            />
+            <Suspense fallback={<LoadingSpinner />}>
+              <TeacherStudentsManager 
+                students={students} 
+                onStudentsUpdate={fetchStaticData} 
+                lessons={lessons} 
+                studentProgress={studentProgress} 
+              />
+            </Suspense>
           </TabsContent>
           <TabsContent value="messages">
-            <TeacherMessagesManager />
+            <Suspense fallback={<LoadingSpinner />}>
+              <TeacherMessagesManager />
+            </Suspense>
+          </TabsContent>
+          <TabsContent value="analytics">
+            <Suspense fallback={<LoadingSpinner />}>
+              <TeacherAnalytics 
+                students={students} 
+                lessons={lessons} 
+                studentProgress={studentProgress} 
+              />
+            </Suspense>
           </TabsContent>
           <TabsContent value="meeting">
-            <TeacherMeetingRoomManager 
-              platformSettings={platformSettings} 
-              onSettingsUpdate={handleSettingsUpdate} 
-            />
+            <Suspense fallback={<LoadingSpinner />}>
+              <TeacherMeetingRoomManager 
+                platformSettings={platformSettings} 
+                onSettingsUpdate={handleSettingsUpdate} 
+              />
+            </Suspense>
           </TabsContent>
           <TabsContent value="platformSettings">
-            <TeacherPlatformSettings 
-              platformSettings={platformSettings} 
-              onSettingsUpdate={handleSettingsUpdate} 
-            />
+            <Suspense fallback={<LoadingSpinner />}>
+              <TeacherPlatformSettings 
+                platformSettings={platformSettings} 
+                onSettingsUpdate={handleSettingsUpdate} 
+              />
+            </Suspense>
           </TabsContent>
         </Tabs>
       </div>
@@ -482,6 +511,6 @@ const TeacherDashboard = () => {
       )}
     </div>
   );
-};
+});
 
 export default TeacherDashboard;

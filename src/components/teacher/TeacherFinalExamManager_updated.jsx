@@ -90,6 +90,7 @@ export const TeacherFinalExamManager = ({ platformSettings, onSettingsUpdate }) 
     const updatedExams = finalExams.map(exam => 
       exam.id === examId ? { ...exam, isVisible } : exam
     );
+    setFinalExams(updatedExams); // تحديث الحالة المحلية فوراً
     handleSaveExams(updatedExams);
   };
   
@@ -192,10 +193,11 @@ export const TeacherFinalExamManager = ({ platformSettings, onSettingsUpdate }) 
                     </div>
                     <div className="flex items-center space-x-2 space-x-reverse">
                       <Switch
+                        id={`visibility-${exam.id}`}
                         checked={exam.isVisible}
                         onCheckedChange={(checked) => handleToggleVisibility(exam.id, checked)}
                       />
-                      <Label className="text-sm text-gray-600">
+                      <Label htmlFor={`visibility-${exam.id}`} className="text-sm text-gray-600 cursor-pointer">
                         {exam.isVisible ? 'إظهار' : 'إخفاء'}
                       </Label>
                     </div>

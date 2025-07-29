@@ -1,23 +1,27 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, memo, useMemo, Suspense, lazy } from 'react';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
 import { collection, getDocs, doc, getDoc, setDoc, updateDoc, arrayUnion, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { toast } from '@/components/ui/use-toast';
 import { ResourceModal } from '@/components/common/ResourceModal';
+import { trackEvent, EVENT_TYPES } from '@/lib/analyticsService';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Award, ExternalLink } from 'lucide-react';
+import LoadingSpinner from '@/components/LoadingSpinner';
 
-import StudentHeader from '@/components/student/StudentHeader';
-import StudentStatsCards from '@/components/student/StudentStatsCards';
-import StudentLessonSelector from '@/components/student/StudentLessonSelector';
-import StudentQuickAccess from '@/components/student/StudentQuickAccess';
-import StudentLessonDetails from '@/components/student/StudentLessonDetails';
-import StudentWelcomeMessage from '@/components/student/StudentWelcomeMessage';
-import { StudentMessaging } from '@/components/student/StudentMessaging';
+// Lazy loading للمكونات الفرعية
+const StudentHeader = lazy(() => import('@/components/student/StudentHeader'));
+const StudentStatsCards = lazy(() => import('@/components/student/StudentStatsCards'));
+const StudentLessonSelector = lazy(() => import('@/components/student/StudentLessonSelector'));
+const StudentQuickAccess = lazy(() => import('@/components/student/StudentQuickAccess'));
+const StudentLessonDetails = lazy(() => import('@/components/student/StudentLessonDetails'));
+const StudentWelcomeMessage = lazy(() => import('@/components/student/StudentWelcomeMessage'));
+const StudentMessaging = lazy(() => import('@/components/student/StudentMessaging').then(module => ({ default: module.StudentMessaging })));
+const ExamAccess = lazy(() => import('@/components/ExamAccess'));
 
-const StudentDashboard = () => {
+const StudentDashboard = memo(() => {
   const { logout, currentUser } = useAuth();
   const [userData, setUserData] = useState(null);
   const [lessons, setLessons] = useState([]);
@@ -30,8 +34,7 @@ const StudentDashboard = () => {
     siteName: 'منصة مهارات التعليمية',
     studentAiToolsUrl: 'https://app.magicschool.ai/tools'
   });
-  const [modalState, setModalState] = useState({ isOpen: false, url: '', title: '', resourceType: '' });
-  const [hasAccessedQuestions, setHasAccessedQuestions] = useState(false);
+  const [modalState, setModalState] = useState({ isOpen: false, url: "", title: "", resourceType: "" });
   const [showMessaging, setShowMessaging] = useState(false);
 
   const fetchLessonsAndUserData = useCallback(async () => {
@@ -145,11 +148,10 @@ const StudentDashboard = () => {
   const handleLessonClick = (lessonId) => {
     const lesson = lessons.find(l => l.id === lessonId);
     setSelectedLesson(lesson);
-    setHasAccessedQuestions(false); // إعادة تعيين الحالة عند تغيير الدرس
   };
 
   const markLessonAsComplete = async (lessonId) => {
-    if (!currentUser || !selectedLesson || selectedLesson.id !== lessonId || !hasAccessedQuestions) return;
+    if (!currentUser || !selectedLesson || selectedLesson.id !== lessonId) return;
     if (studentProgress.completedLessons.includes(lessonId)) {
       toast({ title: "تم إكمال هذا الدرس بالفعل!", variant: "default" });
       return;
@@ -176,23 +178,53 @@ const StudentDashboard = () => {
 
   const openResourceModal = (url, title, resourceType) => {
     if (url) {
-      setModalState({ isOpen: true, url, title, resourceType });
-      if (resourceType === 'questions') {
-        setHasAccessedQuestions(true);
+      // تسجيل حدث فتح المورد
+      if (currentUser && selectedLesson) {
+        let eventType;
+        if (resourceType === 'video') {
+          eventType = 'video_started';
+        } else if (resourceType === 'pdf') {
+          eventType = 'pdf_opened';
+        } else if (resourceType === 'questions') {
+          eventType = 'questions_accessed';
+        } else {
+          eventType = 'resource_accessed';
+        }
+        
+        trackEvent(eventType, currentUser.uid, selectedLesson.id, {
+          resourceTitle: title,
+          resourceType: resourceType,
+          resourceUrl: url
+        });
       }
+      
+      setModalState({ isOpen: true, url, title, resourceType });
     } else {
       toast({ title: "رابط غير متوفر", description: "لم يتم إضافة رابط لهذا المورد بعد.", variant: "default" });
     }
   };
 
   const closeResourceModal = () => {
+    // تسجيل حدث إغلاق المورد إذا كان فيديو
+    if (modalState.resourceType === 'video' && currentUser && selectedLesson) {
+      trackEvent('video_completed', currentUser.uid, selectedLesson.id, {
+        resourceTitle: modalState.title,
+        timeSpent: Date.now() - (window.resourceStartTime || Date.now()) // تقدير الوقت المقضي
+      });
+    }
+    
     setModalState({ isOpen: false, url: '', title: '', resourceType: '' });
   };
 
   const totalLessons = lessons.length;
   const completedLessonsCount = studentProgress.completedLessons?.length || 0;
-  const overallProgress = totalLessons > 0 ? Math.round((completedLessonsCount / totalLessons) * 100) : 0;
-  const finalExams = platformSettings?.finalExamsList || [];
+  const overallProgress = useMemo(() => {
+    return totalLessons > 0 ? Math.round((completedLessonsCount / totalLessons) * 100) : 0;
+  }, [totalLessons, completedLessonsCount]);
+  
+  const finalExams = useMemo(() => {
+    return (platformSettings?.finalExamsList || []).filter(exam => exam.isVisible === true);
+  }, [platformSettings?.finalExamsList]);
 
   if (loading) {
     return (
@@ -207,18 +239,24 @@ const StudentDashboard = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-sky-50 via-indigo-50 to-purple-100 pattern-bg-alt">
-      <StudentHeader userData={userData} onLogout={logout} />
+      <Suspense fallback={<LoadingSpinner />}>
+        <StudentHeader userData={userData} onLogout={logout} />
+      </Suspense>
 
       <div className="container mx-auto px-2 sm:px-4 py-8">
         {showMessaging ? (
-          <StudentMessaging />
+          <Suspense fallback={<LoadingSpinner />}>
+            <StudentMessaging />
+          </Suspense>
         ) : (
           <>
-            <StudentStatsCards 
-              lessonsCount={totalLessons} 
-              completedLessonsCount={completedLessonsCount} 
-              overallProgress={overallProgress} 
-            />
+            <Suspense fallback={<LoadingSpinner />}>
+              <StudentStatsCards 
+                lessonsCount={totalLessons} 
+                completedLessonsCount={completedLessonsCount} 
+                overallProgress={overallProgress} 
+              />
+            </Suspense>
 
             <div className="grid lg:grid-cols-3 gap-8">
               <motion.div
@@ -227,16 +265,20 @@ const StudentDashboard = () => {
                 transition={{ delay: 0.1 }}
                 className="lg:col-span-1 space-y-6"
               >
-                <StudentLessonSelector 
-                  lessons={lessons} 
-                  selectedLessonId={selectedLesson?.id} 
-                  onLessonClick={handleLessonClick}
-                  studentProgress={studentProgress}
-                />
-                <StudentQuickAccess 
-                  platformSettings={platformSettings} 
-                  onOpenResourceModal={openResourceModal} 
-                />
+                <Suspense fallback={<LoadingSpinner />}>
+                  <StudentLessonSelector 
+                    lessons={lessons} 
+                    selectedLessonId={selectedLesson?.id} 
+                    onLessonClick={handleLessonClick}
+                    studentProgress={studentProgress}
+                  />
+                </Suspense>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <StudentQuickAccess 
+                    platformSettings={platformSettings} 
+                    onOpenResourceModal={openResourceModal} 
+                  />
+                </Suspense>
               </motion.div>
 
               <motion.div
@@ -245,47 +287,41 @@ const StudentDashboard = () => {
                 transition={{ delay: 0.2 }}
                 className="lg:col-span-2"
               >
-                {selectedLesson ? (
-                  <StudentLessonDetails 
-                    lesson={selectedLesson}
-                    studentProgress={studentProgress}
-                    onMarkLessonComplete={markLessonAsComplete}
-                    onOpenResourceModal={openResourceModal}
-                    platformSettings={platformSettings}
-                    hasAccessedQuestions={hasAccessedQuestions}
-                  />
-                ) : (
-                  <>
-                    <StudentWelcomeMessage siteName={platformSettings.siteName} />
-                    {finalExams.length > 0 && (
-                      <Card className="mt-6 glass-effect-alt border-0 shadow-xl bg-gradient-to-r from-red-500/10 to-orange-500/10">
-                        <CardHeader>
-                          <CardTitle className="flex items-center gap-2 text-red-700">
-                            <Award className="w-6 h-6" />
-                            الاختبارات 
-                          </CardTitle>
-                          <CardDescription>قم بإجراء الاختبارات  لتقييم فهمك للمادة.</CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-3">
-                          {finalExams.map((exam) => (
-                            <Button
-                              key={exam.id}
-                              variant="outline"
-                              className="w-full justify-start p-4 h-auto glass-button-alt border-red-300 hover:border-red-500"
-                              onClick={() => openResourceModal(exam.url, exam.name, 'finalExam')}
-                            >
-                              <ExternalLink className="w-5 h-5 ml-3 text-red-600" />
-                              <div>
-                                <span className="font-semibold">{exam.name}</span>
-                                <p className="text-xs text-muted-foreground">بدء الاختبار </p>
-                              </div>
-                            </Button>
-                          ))}
-                        </CardContent>
-                      </Card>
-                    )}
-                  </>
-                )}
+                <div className="space-y-6">
+                  {selectedLesson ? (
+                    <Suspense fallback={<LoadingSpinner />}>
+                      <StudentLessonDetails 
+                        lesson={selectedLesson}
+                        studentProgress={studentProgress}
+                        onMarkLessonComplete={markLessonAsComplete}
+                        platformSettings={platformSettings}
+                      />
+                    </Suspense>
+                  ) : (
+                    <Suspense fallback={<LoadingSpinner />}>
+                      <StudentWelcomeMessage siteName={platformSettings.siteName} />
+                    </Suspense>
+                  )}
+                  
+                  {finalExams.length > 0 && (
+                    <div className="space-y-4">
+                      <h3 className="text-xl font-semibold text-red-700 flex items-center gap-2">
+                        <Award className="w-6 h-6" />
+                        الاختبارات
+                      </h3>
+                      <p className="text-gray-600 mb-4">قم بإجراء الاختبارات لتقييم فهمك للمادة.</p>
+                      {finalExams.map((exam) => (
+                        <Suspense key={exam.id} fallback={<LoadingSpinner />}>
+                          <ExamAccess
+                            examUrl={exam.url}
+                            examName={exam.name}
+                            examId={exam.id}
+                          />
+                        </Suspense>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </motion.div>
             </div>
           </>
@@ -300,6 +336,7 @@ const StudentDashboard = () => {
       />
     </div>
   );
-};
+});
 
 export default StudentDashboard;
+

@@ -11,16 +11,10 @@ import {
 import { Button } from '@/components/ui/button';
 import { ExternalLink } from 'lucide-react';
 
-import { Document, Page, pdfjs } from 'react-pdf';
-import 'react-pdf/dist/Page/AnnotationLayer.css';
-import 'react-pdf/dist/Page/TextLayer.css';
-
-pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`;
-
 export const ResourceModal = ({ isOpen, onClose, title, url, resourceType }) => {
   if (!isOpen || !url) return null;
 
-  const isExternalSite = resourceType === 'quiz' || resourceType === 'finalExam' || resourceType === 'meeting';
+  const isExternalSite = resourceType === 'finalExam' || resourceType === 'meeting';
   const [numPages, setNumPages] = useState(null);
   const [pageNumber, setPageNumber] = useState(1);
   const [fallbackToIframe, setFallbackToIframe] = useState(false);
@@ -51,48 +45,6 @@ export const ResourceModal = ({ isOpen, onClose, title, url, resourceType }) => 
     return url;
   };
 
-  const renderPdfContent = () => {
-    return (
-      <div className="flex flex-col items-center justify-center h-full">
-        <Document
-          file={url}
-          onLoadSuccess={onDocumentLoadSuccess}
-          onLoadError={(error) => {
-            console.error("Error loading PDF document:", error);
-            setFallbackToIframe(true);
-          }}
-          className="w-full h-full"
-          loading={<div className="text-center p-4">جاري تحميل ملف PDF...</div>}
-        >
-          <Page 
-            pageNumber={pageNumber} 
-            width={Math.min(window.innerWidth * 0.7, 600)}
-            loading={<div className="text-center p-2">جاري تحميل الصفحة...</div>}
-          />
-        </Document>
-        {numPages && (
-          <div className="flex gap-2 mt-2 items-center">
-            <Button
-              size="sm"
-              onClick={() => setPageNumber(prev => Math.max(prev - 1, 1))}
-              disabled={pageNumber <= 1}
-            >
-              السابق
-            </Button>
-            <span className="text-sm">صفحة {pageNumber} من {numPages}</span>
-            <Button
-              size="sm"
-              onClick={() => setPageNumber(prev => Math.min(prev + 1, numPages))}
-              disabled={pageNumber >= numPages}
-            >
-              التالي
-            </Button>
-          </div>
-        )}
-      </div>
-    );
-  };
-
   const renderIframe = (embedUrl) => (
     <iframe
       src={embedUrl}
@@ -114,9 +66,7 @@ export const ResourceModal = ({ isOpen, onClose, title, url, resourceType }) => 
         <DialogHeader>
           <DialogTitle className="text-xl gradient-text-alt">{title}</DialogTitle>
           <DialogDescription>
-            {resourceType === 'pdf' 
-              ? "يتم عرض ملف PDF. إذا لم يظهر بشكل صحيح، قد يكون بسبب إعدادات الخصوصية للملف. جرب 'فتح في تبويب جديد'."
-              : isExternalSite 
+            {isExternalSite 
                 ? "يتم عرض هذا المحتوى من موقع خارجي. قد تحتاج إلى التفاعل مباشرة مع النافذة أدناه."
                 : "عرض المورد."
             }
@@ -124,13 +74,7 @@ export const ResourceModal = ({ isOpen, onClose, title, url, resourceType }) => 
         </DialogHeader>
         
         <div className="flex-grow overflow-auto py-4 border rounded-md my-2">
-          {resourceType === 'pdf' ? (
-            isGoogleDrive ? renderIframe(processedUrl)
-            : fallbackToIframe ? renderIframe(`https://docs.google.com/gview?url=${encodeURIComponent(url)}&embedded=true`)
-            : renderPdfContent()
-          ) : (
-            renderIframe(url)
-          )}
+          {renderIframe(url)}
         </div>
 
         <DialogFooter className="sm:justify-between mt-auto">
