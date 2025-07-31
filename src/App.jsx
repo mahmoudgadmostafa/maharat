@@ -12,12 +12,12 @@ const StudentDashboard = lazy(() => import('@/components/StudentDashboard'));
 const TeacherDashboard = lazy(() => import('@/components/TeacherDashboard'));
 
 const AppRoutes = () => {
-  const { currentUser, userRole } = useAuth();
+  const { currentUser, userRole, platformSettings } = useAuth();
 
   if (!currentUser) {
     return (
       <Suspense fallback={<LoadingSpinner />}>
-        <HomePage />
+        <HomePage platformSettings={platformSettings} />
       </Suspense>
     );
   }
@@ -33,7 +33,7 @@ const AppRoutes = () => {
             ) : userRole === 'student' ? (
               <Navigate to="/student" replace />
             ) : (
-              <HomePage />
+              <HomePage platformSettings={platformSettings} />
             )
           } 
         />

@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { Settings, Save, Brain, ExternalLink, Plus, Trash2, Edit } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 
@@ -15,6 +16,7 @@ export const TeacherPlatformSettings = ({ platformSettings, onSettingsUpdate }) 
   const [studentAiToolsList, setStudentAiToolsList] = useState([]);
   const [emailDomain, setEmailDomain] = useState('');
   const [studentStartingCodeNumber, setStudentStartingCodeNumber] = useState(1000);
+  const [showRegisterButton, setShowRegisterButton] = useState(true);
 
   // متغيرات لإدارة النماذج
   const [newTeacherTool, setNewTeacherTool] = useState({ name: '', url: '' });
@@ -30,6 +32,7 @@ export const TeacherPlatformSettings = ({ platformSettings, onSettingsUpdate }) 
     setStudentAiToolsList(platformSettings?.studentAiToolsList || []);
     setEmailDomain(platformSettings?.emailDomain || 'myplatform.com');
     setStudentStartingCodeNumber(platformSettings?.studentStartingCodeNumber || 1000);
+    setShowRegisterButton(platformSettings?.showRegisterButton ?? true);
   }, [platformSettings]);
 
   const saveSingleSetting = async (key, value, label) => {
@@ -187,6 +190,22 @@ export const TeacherPlatformSettings = ({ platformSettings, onSettingsUpdate }) 
               >
                 <Save className="w-4 h-4 ml-1" /> حفظ
               </Button>
+            </div>
+          </div>
+
+          {/* التحكم في زر إنشاء حساب */}
+          <div>
+            <Label htmlFor="showRegisterButton">إظهار زر إنشاء حساب في الصفحة الرئيسية</Label>
+            <div className="flex items-center gap-2 mt-1">
+              <Switch
+                id="showRegisterButton"
+                checked={showRegisterButton}
+                onCheckedChange={(checked) => {
+                  setShowRegisterButton(checked);
+                  saveSingleSetting('showRegisterButton', checked, 'إظهار زر إنشاء حساب');
+                }}
+              />
+              <span>{showRegisterButton ? 'مفعل' : 'معطل'}</span>
             </div>
           </div>
 
@@ -510,3 +529,5 @@ export const TeacherPlatformSettings = ({ platformSettings, onSettingsUpdate }) 
     </motion.div>
   );
 };
+
+

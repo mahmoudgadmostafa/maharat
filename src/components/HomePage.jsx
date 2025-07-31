@@ -12,7 +12,7 @@ import LoadingSpinner from '@/components/LoadingSpinner';
 
 const LOGO_URL = "/favicon.png";
 
-const HomePage = () => {
+const HomePage = ({ platformSettings }) => {
   const [loginOpen, setLoginOpen] = useState(false);
   const [registerOpen, setRegisterOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -128,31 +128,33 @@ const HomePage = () => {
               </Dialog>
 
               {/* زر إنشاء حساب المحسن */}
-              <Dialog open={registerOpen} onOpenChange={setRegisterOpen}>
-                <DialogTrigger asChild>
-                  <motion.div
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    className="w-full sm:w-auto"
-                  >
-                    <Button className="enhanced-register-btn w-full sm:w-auto">
-                      <Sparkles className="w-5 h-5 ml-2" />
-                      إنشاء حساب جديد
-                    </Button>
-                  </motion.div>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-md">
-                  <DialogHeader>
-                    <DialogTitle className="text-center text-2xl gradient-text">إنشاء حساب جديد</DialogTitle>
-                    <DialogDescription>انضم إلى منصتنا التعليمية</DialogDescription>
-                  </DialogHeader>
-                  <RegisterForm 
-                    onSubmit={handleRegister} 
-                    isLoading={isLoading}
-                    LoadingComponent={<LoadingSpinner size="small" text="جاري إنشاء الحساب..." />}
-                  />
-                </DialogContent>
-              </Dialog>
+              {(platformSettings?.showRegisterButton ?? true) && (
+                <Dialog open={registerOpen} onOpenChange={setRegisterOpen}>
+                  <DialogTrigger asChild>
+                    <motion.div
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      className="w-full sm:w-auto"
+                    >
+                      <Button className="enhanced-register-btn w-full sm:w-auto">
+                        <Sparkles className="w-5 h-5 ml-2" />
+                        إنشاء حساب جديد
+                      </Button>
+                    </motion.div>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                      <DialogTitle className="text-center text-2xl gradient-text">إنشاء حساب جديد</DialogTitle>
+                      <DialogDescription>انضم إلى منصتنا التعليمية</DialogDescription>
+                    </DialogHeader>
+                    <RegisterForm 
+                      onSubmit={handleRegister} 
+                      isLoading={isLoading}
+                      LoadingComponent={<LoadingSpinner size="small" text="جاري إنشاء الحساب..." />}
+                    />
+                  </DialogContent>
+                </Dialog>
+              )}
             </div>
           </motion.div>
         </div>

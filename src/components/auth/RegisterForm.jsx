@@ -35,10 +35,11 @@ const RegisterForm = () => {
     }
   };
 
-  const generateCredentials = useCallback(async (name) => {
+  const generateCredentials = useCallback(async (name, role) => {
     const nameParts = name.trim().split(/\s+/).filter(Boolean);
-    if (nameParts.length < 3) {
+    if (nameParts.length < 3 || role === 'teacher') {
       setFormData(prev => ({ ...prev, code: '', email: '' }));
+      setIsGenerating(false);
       return;
     }
 
@@ -53,7 +54,7 @@ const RegisterForm = () => {
       const emailDomain = settingsSnap.exists() ? 
         (settingsSnap.data()?.emailDomain || "@maharat.eg") : "@maharat.eg";
 
-      const q = query(collection(db, 'users'), orderBy('code', 'desc'), limit(1));
+      const q = query(collection(db, 'users'), where('role', '==', 'student'), orderBy('code', 'desc'), limit(1));
       const snapshot = await getDocs(q);
       const lastCode = snapshot.empty ? 
         startingCode : 
@@ -77,13 +78,30 @@ const RegisterForm = () => {
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (formData.name.trim().split(/\s+/).length >= 3) {
-        generateCredentials(formData.name);
+      if (formData.role === 'teacher') {
+        // للمعلم: مسح الحقول وعدم توليد أي شيء تلقائياً
+        setFormData(prev => ({ ...prev, code: '', email: '' }));
+      } else if (formData.name.trim().split(/\s+/).length >= 3 && formData.role === 'student') {
+        // للطالب: توليد الكود والبريد الإلكتروني
+        generateCredentials(formData.name, formData.role);
       }
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [formData.name, generateCredentials]);
+  }, [formData.name, formData.role, generateCredentials]);
+
+  // useEffect منفصل لتوليد البريد الإلكتروني للمعلم عند إدخال الكود
+  useEffect(() => {
+    if (formData.role === 'teacher' && formData.code.trim()) {
+      const timer = setTimeout(() => {
+        const emailDomain = '@maharat.eg'; // يمكن جعل هذا قابل للتخصيص من الإعدادات
+        const generatedEmail = `maharat.eg@${formData.code}`;
+        setFormData(prev => ({ ...prev, email: generatedEmail }));
+      }, 300);
+
+      return () => clearTimeout(timer);
+    }
+  }, [formData.code, formData.role]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -99,7 +117,11 @@ const RegisterForm = () => {
     try {
       // التحقق من صحة البيانات
       if (!formData.code) {
-        throw new Error('الرجاء إدخال اسم ثلاثي صحيح');
+        throw new Error(formData.role === 'student' ? 'الرجاء إدخال اسم ثلاثي صحيح' : 'الرجاء إدخال كود المعلم');
+      }
+
+      if (!formData.email) {
+        throw new Error('الرجاء إدخال البريد الإلكتروني');
       }
 
       if (formData.password.length < 6) {
@@ -190,8 +212,10 @@ const RegisterForm = () => {
             id="code"
             name="code"
             value={formData.code}
-            readOnly
-            className="bg-gray-100"
+            onChange={handleChange}
+            readOnly={formData.role === 'student'}
+            className={formData.role === 'student' ? "bg-gray-100" : ""}
+            placeholder={formData.role === 'teacher' ? "أدخل كود المعلم" : ""}
           />
         </div>
         <div>
@@ -200,8 +224,10 @@ const RegisterForm = () => {
             id="email"
             name="email"
             value={formData.email}
-            readOnly
+            onChange={handleChange}
+            readOnly={true}
             className="bg-gray-100"
+            placeholder="سيتم توليده تلقائياً"
           />
         </div>
       </div>
@@ -249,7 +275,7 @@ const RegisterForm = () => {
       <Button
         type="submit"
         className="w-full mt-4"
-        disabled={isSubmitting || isGenerating || !formData.code}
+        disabled={isSubmitting || isGenerating || !formData.code || (formData.role === 'teacher' && !formData.email)}
       >
         {isSubmitting ? 'جاري إنشاء الحساب...' : 'إنشاء الحساب'}
       </Button>

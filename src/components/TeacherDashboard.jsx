@@ -31,7 +31,7 @@ const TeacherAnalytics = lazy(() => import('@/components/teacher/TeacherAnalytic
 const LOGO_URL = "/favicon.png";
 
 const TeacherDashboard = memo(() => {
-  const { logout, currentUser } = useAuth();
+  const { logout, currentUser, updatePlatformSettings } = useAuth();
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [lessons, setLessons] = useState([]);
@@ -200,6 +200,10 @@ const TeacherDashboard = memo(() => {
       const settingsRef = doc(db, 'platformSettings', 'main');
       const processedSettings = { ...newSettings, finalExamsList: newSettings.finalExamsList || [], meetingRoomsList: newSettings.meetingRoomsList || [] };
       await setDoc(settingsRef, processedSettings, { merge: true });
+      
+      // تحديث إعدادات المنصة في AuthContext أيضاً
+      await updatePlatformSettings(processedSettings);
+      
       toast({ title: "تم تحديث الإعدادات" });
     } catch (error) {
       console.error("Error updating platform settings:", error);
