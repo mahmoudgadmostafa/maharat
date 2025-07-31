@@ -24,6 +24,7 @@ export const AuthProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
   const [userRole, setUserRole] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [platformSettings, setPlatformSettings] = useState(null);
 
   const login = async (email, password) => {
     try {
@@ -141,6 +142,24 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const updatePlatformSettings = async (newSettings) => {
+    try {
+      await setDoc(doc(db, 'settings', 'platform'), newSettings);
+      setPlatformSettings(newSettings);
+      toast({
+        title: "تم حفظ الإعدادات",
+        description: "تم تحديث إعدادات المنصة بنجاح",
+      });
+    } catch (error) {
+      toast({
+        title: "خطأ في حفظ الإعدادات",
+        description: "حدث خطأ أثناء حفظ الإعدادات",
+        variant: "destructive",
+      });
+      throw error;
+    }
+  };
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
@@ -167,6 +186,17 @@ export const AuthProvider = ({ children }) => {
         setCurrentUser(null);
         setUserRole(null);
       }
+      
+      // تحميل إعدادات المنصة
+      try {
+        const platformDoc = await getDoc(doc(db, 'settings', 'platform'));
+        if (platformDoc.exists()) {
+          setPlatformSettings(platformDoc.data());
+        }
+      } catch (error) {
+        console.error('Error loading platform settings:', error);
+      }
+      
       setLoading(false);
     });
 
@@ -180,6 +210,8 @@ export const AuthProvider = ({ children }) => {
     register,
     logout,
     loading,
+    platformSettings,
+    updatePlatformSettings,
   };
 
   return (
