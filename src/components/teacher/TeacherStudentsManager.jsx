@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
-import { Users, UserPlus, MessageSquare, Mail, Edit, Trash2, Send, Download, ChevronDown, Menu } from 'lucide-react';
+import { Users, UserPlus, MessageSquare, Mail, Edit, Trash2, Send, Download, ChevronDown, Menu, Upload, FileSpreadsheet } from 'lucide-react';
 import { auth as studentAuth, db } from '@/lib/firebase';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import {
@@ -90,6 +90,11 @@ export const TeacherStudentsManager = ({ students, onStudentsUpdate }) => {
   const [messagesIndexReady, setMessagesIndexReady] = useState(false);
   const [massMessageModalOpen, setMassMessageModalOpen] = useState(false);
   const [massMessageContent, setMassMessageContent] = useState('');
+  const [bulkUploadModalOpen, setBulkUploadModalOpen] = useState(false);
+  const [uploadFile, setUploadFile] = useState(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadResults, setUploadResults] = useState(null);
 
   const [processedStudents, setProcessedStudents] = useState([]);
 
@@ -234,6 +239,174 @@ export const TeacherStudentsManager = ({ students, onStudentsUpdate }) => {
     setMassMessageModalOpen(false);
   };
 
+  const handleBulkUpload = async () => {
+    if (!uploadFile) {
+      toast({ title: 'يرجى اختيار ملف', variant: 'destructive' });
+      return;
+    }
+
+    setIsUploading(true);
+    setUploadProgress(0);
+    setUploadResults(null);
+
+    try {
+      const data = await uploadFile.arrayBuffer();
+      const workbook = XLSX.read(data, { type: 'array' });
+      const sheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[sheetName];
+      const jsonData = XLSX.utils.sheet_to_json(worksheet);
+
+      if (jsonData.length === 0) {
+        throw new Error('الملف فارغ أو لا يحتوي على بيانات صحيحة');
+      }
+
+      // التحقق من الأعمدة المطلوبة
+      const requiredColumns = ['الاسم'];
+      const firstRow = jsonData[0];
+      const missingColumns = requiredColumns.filter(col => !(col in firstRow));
+      
+      if (missingColumns.length > 0) {
+        throw new Error(`الأعمدة المطلوبة مفقودة: ${missingColumns.join(', ')}`);
+      }
+
+      // الحصول على إعدادات المنصة
+      const settingsRef = doc(db, "platformSettings", "main");
+      const settingsSnap = await getDoc(settingsRef);
+      
+      if (!settingsSnap.exists()) {
+        throw new Error("إعدادات المنصة غير موجودة");
+      }
+
+      const settingsData = settingsSnap.data();
+      const startingCode = settingsData?.studentStartingCodeNumber || 1000;
+      const emailDomain = settingsData?.emailDomain || "@maharat.eg";
+
+      // الحصول على آخر كود مستخدم
+      const q = query(collection(db, 'users'), where('role', '==', 'student'), orderBy('code', 'desc'), limit(1));
+      const snapshot = await getDocs(q);
+      
+      let currentCode = startingCode;
+      if (!snapshot.empty) {
+        const lastStudentCode = parseInt(snapshot.docs[0]?.data()?.code);
+        if (!isNaN(lastStudentCode) && lastStudentCode >= startingCode) {
+          currentCode = lastStudentCode + 1;
+        }
+      }
+
+      const results = {
+        success: [],
+        errors: [],
+        total: jsonData.length
+      };
+
+      // معالجة كل طالب
+      for (let i = 0; i < jsonData.length; i++) {
+        const row = jsonData[i];
+        setUploadProgress(Math.round(((i + 1) / jsonData.length) * 100));
+
+        try {
+          const studentName = row['الاسم']?.toString().trim();
+          if (!studentName) {
+            results.errors.push(`الصف ${i + 2}: اسم الطالب مطلوب`);
+            continue;
+          }
+
+          // توليد البيانات تلقائياً
+          const studentCode = currentCode.toString();
+          const studentEmail = `${currentCode}${emailDomain}`;
+          const studentPassword = row['كلمة المرور']?.toString().trim() || studentCode; // استخدام الكود ككلمة مرور افتراضية
+          const studentGroup = row['المجموعة']?.toString().trim() || '';
+          const studentPhone = row['رقم الهاتف']?.toString().trim() || '';
+
+          // إنشاء حساب Firebase
+          const userCredential = await createUserWithEmailAndPassword(studentAuth, studentEmail, studentPassword);
+          const user = userCredential.user;
+          await studentAuth.signOut();
+
+          // حفظ بيانات الطالب في Firestore
+          await setDoc(doc(db, 'users', user.uid), {
+            uid: user.uid,
+            name: studentName,
+            email: studentEmail,
+            group: studentGroup,
+            code: studentCode,
+            phone: studentPhone,
+            password: studentPassword,
+            role: 'student',
+            createdAt: Timestamp.now(),
+          });
+
+          results.success.push({
+            name: studentName,
+            email: studentEmail,
+            code: studentCode,
+            group: studentGroup
+          });
+
+          currentCode++;
+        } catch (error) {
+          console.error(`خطأ في إضافة الطالب ${row['الاسم']}:`, error);
+          results.errors.push(`الصف ${i + 2} (${row['الاسم']}): ${error.message}`);
+        }
+      }
+
+      setUploadResults(results);
+      
+      if (results.success.length > 0) {
+        toast({ 
+          title: `تم إضافة ${results.success.length} طالب بنجاح`,
+          description: results.errors.length > 0 ? `فشل في إضافة ${results.errors.length} طالب` : undefined
+        });
+        onStudentsUpdate();
+      } else {
+        toast({ 
+          title: 'فشل في إضافة الطلاب', 
+          description: 'لم يتم إضافة أي طالب بنجاح',
+          variant: 'destructive' 
+        });
+      }
+
+    } catch (error) {
+      console.error('خطأ في رفع الملف:', error);
+      toast({ 
+        title: 'خطأ في رفع الملف', 
+        description: error.message,
+        variant: 'destructive' 
+      });
+    } finally {
+      setIsUploading(false);
+      setUploadProgress(0);
+    }
+  };
+
+  const downloadTemplate = () => {
+    const templateData = [
+      {
+        'الاسم': 'أحمد محمد',
+        'كلمة المرور': '1001', // اختياري - سيتم استخدام الكود كافتراضي
+        'المجموعة': 'مجموعة 1', // اختياري
+        'رقم الهاتف': '01234567890' // اختياري
+      },
+      {
+        'الاسم': 'فاطمة علي',
+        'كلمة المرور': '',
+        'المجموعة': 'مجموعة 2',
+        'رقم الهاتف': ''
+      }
+    ];
+
+    const worksheet = XLSX.utils.json_to_sheet(templateData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'نموذج الطلاب');
+
+    XLSX.writeFile(workbook, 'نموذج_إضافة_الطلاب.xlsx');
+    
+    toast({ 
+      title: 'تم تحميل النموذج', 
+      description: 'يمكنك ملء البيانات وإعادة رفع الملف' 
+    });
+  };
+
   const exportToExcel = () => {
     try {
       const dataToExport = filteredStudents.map((student, index) => ({
@@ -330,6 +503,12 @@ export const TeacherStudentsManager = ({ students, onStudentsUpdate }) => {
                   <DropdownMenuItem onClick={exportToExcel}>
                     <Download className="w-4 h-4 ml-2" /> تصدير إكسل
                   </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setBulkUploadModalOpen(true)}>
+                    <Upload className="w-4 h-4 ml-2" /> رفع ملف إكسيل
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={downloadTemplate}>
+                    <FileSpreadsheet className="w-4 h-4 ml-2" /> تحميل النموذج
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
@@ -343,6 +522,22 @@ export const TeacherStudentsManager = ({ students, onStudentsUpdate }) => {
             </select>
 
             <div className="hidden md:flex gap-2">
+              <Button 
+                variant="outline" 
+                onClick={downloadTemplate}
+                className="bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-300"
+              >
+                <FileSpreadsheet className="w-4 h-4 ml-2" /> 
+                تحميل النموذج
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={() => setBulkUploadModalOpen(true)}
+                className="bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-300"
+              >
+                <Upload className="w-4 h-4 ml-2" /> 
+                رفع ملف إكسيل
+              </Button>
               <Button 
                 variant="outline" 
                 onClick={exportToExcel}
@@ -483,6 +678,108 @@ export const TeacherStudentsManager = ({ students, onStudentsUpdate }) => {
             <DialogFooter>
               <Button onClick={handleSendMassMessage} className="w-full md:w-auto">
                 <Send className="w-4 h-4 ml-2" /> إرسال
+              </Button>
+            </DialogFooter>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={bulkUploadModalOpen} onOpenChange={setBulkUploadModalOpen}>
+        <DialogContent className="max-w-[95vw] md:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>رفع ملف إكسيل لإضافة مجموعة طلاب</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="text-sm text-gray-600 bg-blue-50 p-3 rounded-md">
+              <p className="font-semibold mb-2">تعليمات:</p>
+              <ul className="list-disc list-inside space-y-1">
+                <li>يجب أن يحتوي الملف على عمود "الاسم" كحد أدنى</li>
+                <li>سيتم توليد الكود والبريد الإلكتروني تلقائياً</li>
+                <li>الأعمدة الاختيارية: كلمة المرور، المجموعة، رقم الهاتف</li>
+                <li>إذا لم تحدد كلمة مرور، سيتم استخدام الكود كافتراضي</li>
+              </ul>
+            </div>
+
+            <div>
+              <Label>اختر ملف إكسيل (.xlsx)</Label>
+              <Input 
+                type="file" 
+                accept=".xlsx,.xls"
+                onChange={(e) => setUploadFile(e.target.files[0])}
+                className="mt-2"
+              />
+            </div>
+
+            {isUploading && (
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span>جاري الرفع...</span>
+                  <span>{uploadProgress}%</span>
+                </div>
+                <Progress value={uploadProgress} className="w-full" />
+              </div>
+            )}
+
+            {uploadResults && (
+              <div className="space-y-3">
+                <div className="text-sm">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="font-semibold">نتائج الرفع:</span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 text-center">
+                    <div className="bg-green-50 p-2 rounded">
+                      <div className="text-green-700 font-bold">{uploadResults.success.length}</div>
+                      <div className="text-xs text-green-600">نجح</div>
+                    </div>
+                    <div className="bg-red-50 p-2 rounded">
+                      <div className="text-red-700 font-bold">{uploadResults.errors.length}</div>
+                      <div className="text-xs text-red-600">فشل</div>
+                    </div>
+                    <div className="bg-blue-50 p-2 rounded">
+                      <div className="text-blue-700 font-bold">{uploadResults.total}</div>
+                      <div className="text-xs text-blue-600">المجموع</div>
+                    </div>
+                  </div>
+                </div>
+
+                {uploadResults.errors.length > 0 && (
+                  <div className="max-h-32 overflow-y-auto bg-red-50 p-2 rounded text-xs">
+                    <div className="font-semibold text-red-700 mb-1">الأخطاء:</div>
+                    {uploadResults.errors.map((error, index) => (
+                      <div key={index} className="text-red-600">{error}</div>
+                    ))}
+                  </div>
+                )}
+
+                {uploadResults.success.length > 0 && (
+                  <div className="max-h-32 overflow-y-auto bg-green-50 p-2 rounded text-xs">
+                    <div className="font-semibold text-green-700 mb-1">تم إضافة:</div>
+                    {uploadResults.success.map((student, index) => (
+                      <div key={index} className="text-green-600">
+                        {student.name} - {student.email} - {student.code}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            <DialogFooter className="flex gap-2">
+              <Button 
+                variant="outline" 
+                onClick={downloadTemplate}
+                className="flex-1"
+              >
+                <FileSpreadsheet className="w-4 h-4 ml-2" />
+                تحميل النموذج
+              </Button>
+              <Button 
+                onClick={handleBulkUpload}
+                disabled={!uploadFile || isUploading}
+                className="flex-1"
+              >
+                <Upload className="w-4 h-4 ml-2" />
+                {isUploading ? 'جاري الرفع...' : 'رفع الملف'}
               </Button>
             </DialogFooter>
           </div>
