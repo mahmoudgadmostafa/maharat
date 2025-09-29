@@ -65,7 +65,7 @@ const StudentQuickAccess = ({ platformSettings, onOpenResourceModal }) => {
           <div className="text-orange-500 font-bold text-sm sm:text-base leading-snug truncate">
             {tool.name}
           </div>
-          <p className="text-xs text-green-600">فتح الغرفة</p>
+          <p className="text-xs text-green-600"> </p>
         </div>
 
         {/* أيقونة الرابط */}
