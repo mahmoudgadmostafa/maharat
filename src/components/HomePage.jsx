@@ -244,7 +244,7 @@ case 'about':
           <p className="text-gray-600 mb-6">تواصل معنا مباشرة من خلال وسائل التواصل التالية:</p>
 
           <div className="flex justify-center gap-6 mb-8">
-            <a href="https://web.facebook.com/maharet.edu" target="_blank" rel="noopener noreferrer"
+            <a href="https://web.facebook.com/madrasati.26/" target="_blank" rel="noopener noreferrer"
               className="bg-blue-600 hover:bg-blue-700 text-white p-4 rounded-full shadow-lg transition">
               <Facebook className="w-6 h-6" />
             </a>
