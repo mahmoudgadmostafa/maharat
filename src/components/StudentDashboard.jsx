@@ -10,6 +10,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Award, ExternalLink } from 'lucide-react';
 import LoadingSpinner from '@/components/LoadingSpinner';
+import ChatBotWidget from "@/components/ChatBotWidget";
+
 
 // Lazy loading للمكونات الفرعية
 const StudentHeader = lazy(() => import('@/components/student/StudentHeader'));
@@ -333,6 +335,7 @@ const StudentDashboard = memo(() => {
         title={modalState.title}
         url={modalState.url}
         resourceType={modalState.resourceType}
+        {currentUser && <ChatBotWidget />}
       />
     </div>
   );
