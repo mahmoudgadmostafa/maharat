@@ -335,8 +335,8 @@ const StudentDashboard = memo(() => {
         title={modalState.title}
         url={modalState.url}
         resourceType={modalState.resourceType}
-        {currentUser && <ChatBotWidget />}
       />
+      {currentUser && <ChatBotWidget />}
     </div>
   );
 });
