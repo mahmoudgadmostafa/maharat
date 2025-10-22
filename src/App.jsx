@@ -5,8 +5,6 @@ import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { Toaster } from '@/components/ui/toaster';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import ErrorBoundary from '@/components/ErrorBoundary';
-import ChatBotWidget from "@/components/ChatBotWidget";
-
 
 // Lazy loading للمكونات الرئيسية
 const HomePage = lazy(() => import('@/components/HomePage'));
@@ -73,7 +71,6 @@ const App = () => {
           <div className="App">
             <AppRoutes />
             <Toaster />
-             {currentUser && <ChatBotWidget />} {/* 👈 الشات يظهر فقط بعد تسجيل الدخول */}
           </div>
         </Router>
       </AuthProvider>
