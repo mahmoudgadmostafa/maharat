@@ -11,7 +11,6 @@ import { Button } from '@/components/ui/button';
 import { Award, ExternalLink } from 'lucide-react';
 import LoadingSpinner from '@/components/LoadingSpinner';
 
-
 // Lazy loading للمكونات الفرعية
 const StudentHeader = lazy(() => import('@/components/student/StudentHeader'));
 const StudentStatsCards = lazy(() => import('@/components/student/StudentStatsCards'));
@@ -229,10 +228,10 @@ const StudentDashboard = memo(() => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-sky-50 via-indigo-50 to-purple-100 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-sky-50 via-indigo-50 to-purple-100 flex items-center justify-center p-4">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-sky-600 mx-auto mb-4"></div>
-          <p className="text-xl text-gray-600">جاري تحميل بياناتك التعليمية...</p>
+          <div className="animate-spin rounded-full h-24 w-24 md:h-32 md:w-32 border-b-2 border-sky-600 mx-auto mb-4"></div>
+          <p className="text-lg md:text-xl text-gray-600">جاري تحميل بياناتك التعليمية...</p>
         </div>
       </div>
     );
@@ -240,18 +239,30 @@ const StudentDashboard = memo(() => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-sky-50 via-indigo-50 to-purple-100 pattern-bg-alt">
-      <Suspense fallback={<LoadingSpinner />}>
+      <Suspense fallback={
+        <div className="flex justify-center items-center py-8">
+          <LoadingSpinner />
+        </div>
+      }>
         <StudentHeader userData={userData} onLogout={logout} />
       </Suspense>
 
-      <div className="container mx-auto px-2 sm:px-4 py-8">
+      <div className="container mx-auto px-3 sm:px-4 md:px-6 py-4 md:py-6 lg:py-8">
         {showMessaging ? (
-          <Suspense fallback={<LoadingSpinner />}>
+          <Suspense fallback={
+            <div className="flex justify-center items-center py-12">
+              <LoadingSpinner />
+            </div>
+          }>
             <StudentMessaging />
           </Suspense>
         ) : (
           <>
-            <Suspense fallback={<LoadingSpinner />}>
+            <Suspense fallback={
+              <div className="flex justify-center items-center py-8">
+                <LoadingSpinner />
+              </div>
+            }>
               <StudentStatsCards 
                 lessonsCount={totalLessons} 
                 completedLessonsCount={completedLessonsCount} 
@@ -259,14 +270,18 @@ const StudentDashboard = memo(() => {
               />
             </Suspense>
 
-            <div className="grid lg:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 lg:gap-8 mt-6 md:mt-8">
               <motion.div
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.1 }}
-                className="lg:col-span-1 space-y-6"
+                className="md:col-span-2 lg:col-span-1 space-y-4 md:space-y-6"
               >
-                <Suspense fallback={<LoadingSpinner />}>
+                <Suspense fallback={
+                  <div className="flex justify-center items-center py-8">
+                    <LoadingSpinner />
+                  </div>
+                }>
                   <StudentLessonSelector 
                     lessons={lessons} 
                     selectedLessonId={selectedLesson?.id} 
@@ -274,7 +289,11 @@ const StudentDashboard = memo(() => {
                     studentProgress={studentProgress}
                   />
                 </Suspense>
-                <Suspense fallback={<LoadingSpinner />}>
+                <Suspense fallback={
+                  <div className="flex justify-center items-center py-8">
+                    <LoadingSpinner />
+                  </div>
+                }>
                   <StudentQuickAccess 
                     platformSettings={platformSettings} 
                     onOpenResourceModal={openResourceModal} 
@@ -286,11 +305,15 @@ const StudentDashboard = memo(() => {
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.2 }}
-                className="lg:col-span-2"
+                className="md:col-span-2 lg:col-span-2"
               >
-                <div className="space-y-6">
+                <div className="space-y-4 md:space-y-6">
                   {selectedLesson ? (
-                    <Suspense fallback={<LoadingSpinner />}>
+                    <Suspense fallback={
+                      <div className="flex justify-center items-center py-12">
+                        <LoadingSpinner />
+                      </div>
+                    }>
                       <StudentLessonDetails 
                         lesson={selectedLesson}
                         studentProgress={studentProgress}
@@ -299,20 +322,30 @@ const StudentDashboard = memo(() => {
                       />
                     </Suspense>
                   ) : (
-                    <Suspense fallback={<LoadingSpinner />}>
+                    <Suspense fallback={
+                      <div className="flex justify-center items-center py-12">
+                        <LoadingSpinner />
+                      </div>
+                    }>
                       <StudentWelcomeMessage siteName={platformSettings.siteName} />
                     </Suspense>
                   )}
                   
                   {finalExams.length > 0 && (
-                    <div className="space-y-4">
-                      <h3 className="text-xl font-semibold text-red-700 flex items-center gap-2">
-                        <Award className="w-6 h-6" />
+                    <div className="space-y-3 md:space-y-4">
+                      <h3 className="text-lg md:text-xl font-semibold text-red-700 flex items-center gap-2">
+                        <Award className="w-5 h-5 md:w-6 md:h-6" />
                         الاختبارات
                       </h3>
-                      <p className="text-gray-600 mb-4">قم بإجراء الاختبارات لتقييم فهمك للمادة.</p>
+                      <p className="text-sm md:text-base text-gray-600 mb-3 md:mb-4">
+                        قم بإجراء الاختبارات لتقييم فهمك للمادة.
+                      </p>
                       {finalExams.map((exam) => (
-                        <Suspense key={exam.id} fallback={<LoadingSpinner />}>
+                        <Suspense key={exam.id} fallback={
+                          <div className="flex justify-center items-center py-4">
+                            <LoadingSpinner size="sm" />
+                          </div>
+                        }>
                           <ExamAccess
                             examUrl={exam.url}
                             examName={exam.name}
@@ -340,4 +373,3 @@ const StudentDashboard = memo(() => {
 });
 
 export default StudentDashboard;
-
