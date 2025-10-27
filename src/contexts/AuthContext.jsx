@@ -8,7 +8,6 @@ import {
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { toast } from '@/components/ui/use-toast';
-import LoadingSpinner from '@/components/LoadingSpinner';
 
 const AuthContext = createContext();
 
@@ -59,70 +58,70 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
- const register = async (formData) => {
-  const { email, password, role, name, phone, code } = formData;
+  const register = async (formData) => {
+    const { email, password, role, name, phone, code } = formData;
 
-  try {
-    if (role === 'teacher') {
-      const teacherDoc = await getDoc(doc(db, 'settings', 'teacher'));
-      if (teacherDoc.exists() && teacherDoc.data().exists) {
-        toast({
-          title: "خطأ في التسجيل",
-          description: "يوجد معلم مسجل بالفعل في المنصة",
-          variant: "destructive",
-        });
-        throw new Error('Teacher already exists');
+    try {
+      if (role === 'teacher') {
+        const teacherDoc = await getDoc(doc(db, 'settings', 'teacher'));
+        if (teacherDoc.exists() && teacherDoc.data().exists) {
+          toast({
+            title: "خطأ في التسجيل",
+            description: "يوجد معلم مسجل بالفعل في المنصة",
+            variant: "destructive",
+          });
+          throw new Error('Teacher already exists');
+        }
       }
-    }
 
-    const result = await createUserWithEmailAndPassword(auth, email, password);
+      const result = await createUserWithEmailAndPassword(auth, email, password);
 
-    await setDoc(doc(db, 'users', result.user.uid), {
-      email,
-      role,
-      name,
-      phone: phone || '',
-      code: code || '',
-      createdAt: new Date().toISOString(),
-    });
-
-    if (role === 'teacher') {
-      await setDoc(doc(db, 'settings', 'teacher'), {
-        exists: true,
-        teacherId: result.user.uid,
+      await setDoc(doc(db, 'users', result.user.uid), {
+        email,
+        role,
+        name,
+        phone: phone || '',
+        code: code || '',
+        createdAt: new Date().toISOString(),
       });
+
+      if (role === 'teacher') {
+        await setDoc(doc(db, 'settings', 'teacher'), {
+          exists: true,
+          teacherId: result.user.uid,
+        });
+      }
+
+      const newUser = {
+        uid: result.user.uid,
+        email,
+        displayName: name,
+        role,
+        name,
+        phone,
+        code,
+      };
+
+      setCurrentUser(newUser);
+      setUserRole(role);
+
+      toast({
+        title: "تم إنشاء الحساب بنجاح",
+        description: "مرحباً بك في منصة مهارات التعليمية",
+      });
+
+      return role;
+    } catch (error) {
+      toast({
+        title: "خطأ في إنشاء الحساب",
+        description: error.message === 'Teacher already exists'
+          ? "يوجد معلم مسجل بالفعل في المنصة"
+          : "حدث خطأ أثناء إنشاء الحساب",
+        variant: "destructive",
+      });
+      throw error;
     }
-
-    const newUser = {
-      uid: result.user.uid,
-      email,
-      displayName: name,
-      role,
-      name,
-      phone,
-      code,
-    };
-
-    setCurrentUser(newUser);
-    setUserRole(role);
-
-    toast({
-      title: "تم إنشاء الحساب بنجاح",
-      description: "مرحباً بك في منصة مهارات التعليمية",
-    });
-
-    return role;
-  } catch (error) {
-    toast({
-      title: "خطأ في إنشاء الحساب",
-      description: error.message === 'Teacher already exists'
-        ? "يوجد معلم مسجل بالفعل في المنصة"
-        : "حدث خطأ أثناء إنشاء الحساب",
-      variant: "destructive",
-    });
-    throw error;
-  }
-};
+  };
 
   const logout = async () => {
     try {
@@ -209,20 +208,15 @@ export const AuthProvider = ({ children }) => {
     login,
     register,
     logout,
-    loading,
+    loading, // إرجاع حالة التحميل للاستخدام في App
     platformSettings,
     updatePlatformSettings,
   };
 
+  // إزالة التحميل من هنا - دعه يتحكم فيه App
   return (
     <AuthContext.Provider value={value}>
-      {loading ? (
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-100">
-          <LoadingSpinner size="large" text="جاري تحميل المنصة..." />
-        </div>
-      ) : (
-        children
-      )}
+      {children}
     </AuthContext.Provider>
   );
 };
