@@ -12,26 +12,19 @@ const TeacherDashboard = lazy(() => import('@/components/TeacherDashboard'));
 
 // مكون تحميل موحد
 const UnifiedLoading = () => (
-  <div className="flex flex-col items-center justify-center min-h-screen">
-    <LoadingSpinner />
-    <p className="mt-4 text-lg">جاري تحميل المنصة...</p>
+  <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-100">
+    <LoadingSpinner size="large" />
+    <p className="mt-4 text-lg text-gray-700">جاري تحميل المنصة...</p>
   </div>
 );
 
 const AppRoutes = () => {
-  const { currentUser, userRole, platformSettings, isLoading } = useAuth();
-
-  // إذا كان في مرحلة تحميل المصادقة
-  if (isLoading) {
-    return <UnifiedLoading />;
-  }
+  const { currentUser, userRole, platformSettings } = useAuth();
 
   // إذا لم يكن مستخدم مسجل
   if (!currentUser) {
     return (
-      <Suspense fallback={<UnifiedLoading />}>
-        <HomePage platformSettings={platformSettings} />
-      </Suspense>
+      <HomePage platformSettings={platformSettings} />
     );
   }
 
@@ -60,40 +53,45 @@ const AppRoutes = () => {
   );
 };
 
-const App = () => {
+const AppContent = () => {
   const [isAppReady, setIsAppReady] = useState(false);
+  const { loading } = useAuth(); // استخدام حالة التحميل من AuthContext
 
   useEffect(() => {
-    // محاكاة تحميل البيانات الأساسية للمنصة
     const initializeApp = async () => {
-      try {
-        // يمكنك إضافة أي تهيئة إضافية هنا
-        await new Promise(resolve => setTimeout(resolve, 1000)); // محاكاة تحميل
+      // انتظر انتهاء تحميل المصادقة + أي تحميل إضافي
+      if (!loading) {
+        // محاكاة أي تحميل إضافي للمنصة (مثل الإعدادات، الثيمات، etc.)
+        await new Promise(resolve => setTimeout(resolve, 300));
         setIsAppReady(true);
-      } catch (error) {
-        console.error('Error initializing app:', error);
-        setIsAppReady(true); // استمر حتى في حالة الخطأ
       }
     };
 
     initializeApp();
-  }, []);
+  }, [loading]);
 
-  if (!isAppReady) {
+  // تحميل موحد من مكان واحد فقط
+  if (loading || !isAppReady) {
     return <UnifiedLoading />;
   }
 
   return (
+    <Router>
+      <div className="App">
+        <Suspense fallback={<UnifiedLoading />}>
+          <AppRoutes />
+        </Suspense>
+        <Toaster />
+      </div>
+    </Router>
+  );
+};
+
+const App = () => {
+  return (
     <ErrorBoundary>
       <AuthProvider>
-        <Router>
-          <div className="App">
-            <Suspense fallback={<UnifiedLoading />}>
-              <AppRoutes />
-            </Suspense>
-            <Toaster />
-          </div>
-        </Router>
+        <AppContent />
       </AuthProvider>
     </ErrorBoundary>
   );
