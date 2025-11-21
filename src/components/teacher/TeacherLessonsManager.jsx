@@ -322,7 +322,7 @@ export const TeacherLessonsManager = ({ lessons, onLessonsUpdate }) => {
                     </div>
                     {lesson.learningOutcomes && lesson.learningOutcomes.length > 0 && (
                       <div className="md:col-span-3">
-                        <span className="font-medium"> نواتج التعلم:يتوقع بنهاية الدرس ان يكون الطالب قادرا علي </span>
+                        <span className="font-medium">نواتج التعلم: </span>
                         <ul className="list-disc list-inside text-gray-700">
                           {lesson.learningOutcomes.map((outcome, idx) => (
                             <li key={idx}>{outcome}</li>
