@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Settings, Save, Brain, ExternalLink, Plus, Trash2, Edit } from 'lucide-react';
+import { Settings, Save, Brain, ExternalLink, Plus, Trash2, Edit, Eye, EyeOff } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 
 export const TeacherPlatformSettings = ({ platformSettings, onSettingsUpdate }) => {
@@ -19,8 +19,8 @@ export const TeacherPlatformSettings = ({ platformSettings, onSettingsUpdate }) 
   const [showRegisterButton, setShowRegisterButton] = useState(true);
 
   // متغيرات لإدارة النماذج
-  const [newTeacherTool, setNewTeacherTool] = useState({ name: '', url: '' });
-  const [newStudentTool, setNewStudentTool] = useState({ name: '', url: '' });
+  const [newTeacherTool, setNewTeacherTool] = useState({ name: '', url: '', isVisible: true });
+  const [newStudentTool, setNewStudentTool] = useState({ name: '', url: '', isVisible: true });
   const [editingTeacherTool, setEditingTeacherTool] = useState(null);
   const [editingStudentTool, setEditingStudentTool] = useState(null);
 
@@ -28,8 +28,15 @@ export const TeacherPlatformSettings = ({ platformSettings, onSettingsUpdate }) 
     setSiteName(platformSettings?.siteName || 'منصة مهارات التعليمية');
     setTeacherAiToolsUrl(platformSettings?.teacherAiToolsUrl || 'https://app.magicschool.ai/tools');
     setStudentAiToolsUrl(platformSettings?.studentAiToolsUrl || 'https://app.magicschool.ai/tools');
-    setTeacherAiToolsList(platformSettings?.teacherAiToolsList || []);
-    setStudentAiToolsList(platformSettings?.studentAiToolsList || []);
+    // التأكد من أن كل أداة لها حقل isVisible (للتوافق مع البيانات القديمة)
+    setTeacherAiToolsList((platformSettings?.teacherAiToolsList || []).map(tool => ({
+      ...tool,
+      isVisible: tool.isVisible !== undefined ? tool.isVisible : true
+    })));
+    setStudentAiToolsList((platformSettings?.studentAiToolsList || []).map(tool => ({
+      ...tool,
+      isVisible: tool.isVisible !== undefined ? tool.isVisible : true
+    })));
     setEmailDomain(platformSettings?.emailDomain || 'myplatform.com');
     setStudentStartingCodeNumber(platformSettings?.studentStartingCodeNumber || 1000);
     setShowRegisterButton(platformSettings?.showRegisterButton ?? true);
@@ -69,7 +76,7 @@ export const TeacherPlatformSettings = ({ platformSettings, onSettingsUpdate }) 
     const updatedList = [...teacherAiToolsList, { ...newTeacherTool, id: newId }];
     setTeacherAiToolsList(updatedList);
     await saveSingleSetting('teacherAiToolsList', updatedList, 'قائمة تطبيقات المعلم');
-    setNewTeacherTool({ name: '', url: '' });
+    setNewTeacherTool({ name: '', url: '', isVisible: true });
   };
 
   const updateTeacherTool = async (id, updatedTool) => {
@@ -102,7 +109,7 @@ export const TeacherPlatformSettings = ({ platformSettings, onSettingsUpdate }) 
     const updatedList = [...studentAiToolsList, { ...newStudentTool, id: newId }];
     setStudentAiToolsList(updatedList);
     await saveSingleSetting('studentAiToolsList', updatedList, 'قائمة تطبيقات الطالب');
-    setNewStudentTool({ name: '', url: '' });
+    setNewStudentTool({ name: '', url: '', isVisible: true });
   };
 
   const updateStudentTool = async (id, updatedTool) => {
@@ -118,6 +125,24 @@ export const TeacherPlatformSettings = ({ platformSettings, onSettingsUpdate }) 
     const updatedList = studentAiToolsList.filter(tool => tool.id !== id);
     setStudentAiToolsList(updatedList);
     await saveSingleSetting('studentAiToolsList', updatedList, 'قائمة تطبيقات الطالب');
+  };
+
+  // وظيفة تبديل حالة الظهور/الإخفاء لتطبيقات الطالب
+  const toggleStudentToolVisibility = async (id) => {
+    const updatedList = studentAiToolsList.map(tool => 
+      tool.id === id ? { ...tool, isVisible: !tool.isVisible } : tool
+    );
+    setStudentAiToolsList(updatedList);
+    await saveSingleSetting('studentAiToolsList', updatedList, 'حالة إظهار تطبيق الطالب');
+  };
+
+  // وظيفة تبديل حالة الظهور/الإخفاء لتطبيقات المعلم
+  const toggleTeacherToolVisibility = async (id) => {
+    const updatedList = teacherAiToolsList.map(tool => 
+      tool.id === id ? { ...tool, isVisible: !tool.isVisible } : tool
+    );
+    setTeacherAiToolsList(updatedList);
+    await saveSingleSetting('teacherAiToolsList', updatedList, 'حالة إظهار تطبيق المعلم');
   };
 
   return (
@@ -289,7 +314,12 @@ export const TeacherPlatformSettings = ({ platformSettings, onSettingsUpdate }) 
                       ) : (
                         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 gap-2">
                           <div className="flex-1 min-w-0">
-                            <p className="font-medium truncate">{tool.name}</p>
+                            <div className="flex items-center gap-2 mb-1">
+                              <p className="font-medium truncate">{tool.name}</p>
+                              <span className={`text-xs px-2 py-0.5 rounded-full ${tool.isVisible ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+                                {tool.isVisible ? 'ظاهر' : 'مخفي'}
+                              </span>
+                            </div>
                             <a 
                               href={tool.url} 
                               target="_blank" 
@@ -301,6 +331,18 @@ export const TeacherPlatformSettings = ({ platformSettings, onSettingsUpdate }) 
                             </a>
                           </div>
                           <div className="flex gap-2 self-end sm:self-center">
+                            <Button 
+                              size="sm" 
+                              variant="outline" 
+                              onClick={() => toggleTeacherToolVisibility(tool.id)}
+                              title={tool.isVisible ? 'إخفاء التطبيق' : 'إظهار التطبيق'}
+                            >
+                              {tool.isVisible ? (
+                                <EyeOff className="w-4 h-4" />
+                              ) : (
+                                <Eye className="w-4 h-4" />
+                              )}
+                            </Button>
                             <Button 
                               size="sm" 
                               variant="outline" 
@@ -405,7 +447,12 @@ export const TeacherPlatformSettings = ({ platformSettings, onSettingsUpdate }) 
                       ) : (
                         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 gap-2">
                           <div className="flex-1 min-w-0">
-                            <p className="font-medium truncate">{tool.name}</p>
+                            <div className="flex items-center gap-2 mb-1">
+                              <p className="font-medium truncate">{tool.name}</p>
+                              <span className={`text-xs px-2 py-0.5 rounded-full ${tool.isVisible ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+                                {tool.isVisible ? 'ظاهر' : 'مخفي'}
+                              </span>
+                            </div>
                             <a 
                               href={tool.url} 
                               target="_blank" 
@@ -417,6 +464,18 @@ export const TeacherPlatformSettings = ({ platformSettings, onSettingsUpdate }) 
                             </a>
                           </div>
                           <div className="flex gap-2 self-end sm:self-center">
+                            <Button 
+                              size="sm" 
+                              variant="outline" 
+                              onClick={() => toggleStudentToolVisibility(tool.id)}
+                              title={tool.isVisible ? 'إخفاء التطبيق' : 'إظهار التطبيق'}
+                            >
+                              {tool.isVisible ? (
+                                <EyeOff className="w-4 h-4" />
+                              ) : (
+                                <Eye className="w-4 h-4" />
+                              )}
+                            </Button>
                             <Button 
                               size="sm" 
                               variant="outline" 
@@ -440,94 +499,8 @@ export const TeacherPlatformSettings = ({ platformSettings, onSettingsUpdate }) 
               </div>
             </CardContent>
           </Card>
-
-          {/* الروابط القديمة للتوافق مع النسخة السابقة */}
-          <Card className="border-0 shadow-lg bg-yellow-50/50">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base sm:text-lg text-yellow-700">
-                <Brain className="w-5 h-5" />
-                الروابط الافتراضية (للتوافق مع النسخة السابقة)
-              </CardTitle>
-              <CardDescription className="text-sm">
-                هذه الروابط ستُستخدم في حالة عدم وجود تطبيقات في القوائم أعلاه
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* رابط أدوات الذكاء للمعلم */}
-              <div>
-                <Label htmlFor="teacherAiToolsUrl" className="flex items-center gap-1">
-                  <Brain className="w-4 h-4 text-purple-600" />
-                  رابط أدوات الذكاء (معلم)
-                </Label>
-                <div className="flex flex-col sm:flex-row gap-2 mt-1">
-                  <Input
-                    id="teacherAiToolsUrl"
-                    type="url"
-                    value={teacherAiToolsUrl}
-                    onChange={(e) => setTeacherAiToolsUrl(e.target.value)}
-                    className="flex-1"
-                  />
-                  <Button 
-                    onClick={() => saveSingleSetting('teacherAiToolsUrl', teacherAiToolsUrl, 'رابط المعلم')}
-                    className="w-full sm:w-auto"
-                  >
-                    <Save className="w-4 h-4 ml-1" /> حفظ
-                  </Button>
-                </div>
-                {teacherAiToolsUrl && (
-                  <a 
-                    href={teacherAiToolsUrl} 
-                    target="_blank" 
-                    rel="noopener noreferrer" 
-                    className="text-xs text-blue-500 hover:underline mt-1 inline-block truncate max-w-full"
-                    title={teacherAiToolsUrl}
-                  >
-                    <ExternalLink className="w-3 h-3 inline mr-1" />
-                    الرابط الحالي: {teacherAiToolsUrl}
-                  </a>
-                )}
-              </div>
-
-              {/* رابط أدوات الذكاء للطالب */}
-              <div>
-                <Label htmlFor="studentAiToolsUrl" className="flex items-center gap-1">
-                  <Brain className="w-4 h-4 text-indigo-600" />
-                  رابط أدوات الذكاء (طالب)
-                </Label>
-                <div className="flex flex-col sm:flex-row gap-2 mt-1">
-                  <Input
-                    id="studentAiToolsUrl"
-                    type="url"
-                    value={studentAiToolsUrl}
-                    onChange={(e) => setStudentAiToolsUrl(e.target.value)}
-                    className="flex-1"
-                  />
-                  <Button 
-                    onClick={() => saveSingleSetting('studentAiToolsUrl', studentAiToolsUrl, 'رابط الطالب')}
-                    className="w-full sm:w-auto"
-                  >
-                    <Save className="w-4 h-4 ml-1" /> حفظ
-                  </Button>
-                </div>
-                {studentAiToolsUrl && (
-                  <a 
-                    href={studentAiToolsUrl} 
-                    target="_blank" 
-                    rel="noopener noreferrer" 
-                    className="text-xs text-blue-500 hover:underline mt-1 inline-block truncate max-w-full"
-                    title={studentAiToolsUrl}
-                  >
-                    <ExternalLink className="w-3 h-3 inline mr-1" />
-                    الرابط الحالي: {studentAiToolsUrl}
-                  </a>
-                )}
-              </div>
-            </CardContent>
-          </Card>
         </CardContent>
       </Card>
     </motion.div>
   );
 };
-
-
