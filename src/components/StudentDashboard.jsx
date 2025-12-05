@@ -32,7 +32,8 @@ const StudentDashboard = memo(() => {
     finalExamsList: [], 
     meetingRoomsList: [], 
     siteName: 'منصة مهارات التعليمية',
-    studentAiToolsUrl: 'https://app.magicschool.ai/tools'
+    studentAiToolsUrl: 'https://app.magicschool.ai/tools',
+    studentAiToolsList: [] // إضافة القائمة الأساسية
   });
   const [modalState, setModalState] = useState({ isOpen: false, url: "", title: "", resourceType: "" });
   const [showMessaging, setShowMessaging] = useState(false);
@@ -115,7 +116,9 @@ const StudentDashboard = memo(() => {
             ...prev, 
             ...newSettings,
             finalExamsList: newSettings.finalExamsList || [], 
-            meetingRoomsList: newSettings.meetingRoomsList || [], 
+            meetingRoomsList: newSettings.meetingRoomsList || [],
+            studentAiToolsList: newSettings.studentAiToolsList || [], // التأكد من وجود القائمة
+            teacherAiToolsList: newSettings.teacherAiToolsList || [] // لاستخدامها لاحقًا إذا لزم الأمر
           }));
         }
       }, (error) => {
@@ -226,12 +229,17 @@ const StudentDashboard = memo(() => {
     return (platformSettings?.finalExamsList || []).filter(exam => exam.isVisible === true);
   }, [platformSettings?.finalExamsList]);
 
+  // فلترة تطبيقات الذكاء الاصطناعي للطالب بناءً على حالة isVisible
+  const filteredStudentAiTools = useMemo(() => {
+    return (platformSettings?.studentAiToolsList || []).filter(tool => tool.isVisible === true);
+  }, [platformSettings?.studentAiToolsList]);
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-sky-50 via-indigo-50 to-purple-100 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-sky-50 via-indigo-50 to-purple-100 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-24 w-24 md:h-32 md:w-32 border-b-2 border-sky-600 mx-auto mb-4"></div>
-          <p className="text-lg md:text-xl text-gray-600">جاري تحميل بياناتك التعليمية...</p>
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-sky-600 mx-auto mb-4"></div>
+          <p className="text-xl text-gray-600">جاري تحميل بياناتك التعليمية...</p>
         </div>
       </div>
     );
@@ -239,30 +247,18 @@ const StudentDashboard = memo(() => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-sky-50 via-indigo-50 to-purple-100 pattern-bg-alt">
-      <Suspense fallback={
-        <div className="flex justify-center items-center py-8">
-          <LoadingSpinner />
-        </div>
-      }>
+      <Suspense fallback={<LoadingSpinner />}>
         <StudentHeader userData={userData} onLogout={logout} />
       </Suspense>
 
-      <div className="container mx-auto px-3 sm:px-4 md:px-6 py-4 md:py-6 lg:py-8">
+      <div className="container mx-auto px-2 sm:px-4 py-8">
         {showMessaging ? (
-          <Suspense fallback={
-            <div className="flex justify-center items-center py-12">
-              <LoadingSpinner />
-            </div>
-          }>
+          <Suspense fallback={<LoadingSpinner />}>
             <StudentMessaging />
           </Suspense>
         ) : (
           <>
-            <Suspense fallback={
-              <div className="flex justify-center items-center py-8">
-                <LoadingSpinner />
-              </div>
-            }>
+            <Suspense fallback={<LoadingSpinner />}>
               <StudentStatsCards 
                 lessonsCount={totalLessons} 
                 completedLessonsCount={completedLessonsCount} 
@@ -270,18 +266,14 @@ const StudentDashboard = memo(() => {
               />
             </Suspense>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 lg:gap-8 mt-6 md:mt-8">
+            <div className="grid lg:grid-cols-3 gap-8">
               <motion.div
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.1 }}
-                className="md:col-span-2 lg:col-span-1 space-y-4 md:space-y-6"
+                className="lg:col-span-1 space-y-6"
               >
-                <Suspense fallback={
-                  <div className="flex justify-center items-center py-8">
-                    <LoadingSpinner />
-                  </div>
-                }>
+                <Suspense fallback={<LoadingSpinner />}>
                   <StudentLessonSelector 
                     lessons={lessons} 
                     selectedLessonId={selectedLesson?.id} 
@@ -289,13 +281,12 @@ const StudentDashboard = memo(() => {
                     studentProgress={studentProgress}
                   />
                 </Suspense>
-                <Suspense fallback={
-                  <div className="flex justify-center items-center py-8">
-                    <LoadingSpinner />
-                  </div>
-                }>
+                <Suspense fallback={<LoadingSpinner />}>
                   <StudentQuickAccess 
-                    platformSettings={platformSettings} 
+                    platformSettings={{
+                      ...platformSettings,
+                      studentAiToolsList: filteredStudentAiTools // تمرير القائمة المفلترة
+                    }} 
                     onOpenResourceModal={openResourceModal} 
                   />
                 </Suspense>
@@ -305,15 +296,11 @@ const StudentDashboard = memo(() => {
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.2 }}
-                className="md:col-span-2 lg:col-span-2"
+                className="lg:col-span-2"
               >
-                <div className="space-y-4 md:space-y-6">
+                <div className="space-y-6">
                   {selectedLesson ? (
-                    <Suspense fallback={
-                      <div className="flex justify-center items-center py-12">
-                        <LoadingSpinner />
-                      </div>
-                    }>
+                    <Suspense fallback={<LoadingSpinner />}>
                       <StudentLessonDetails 
                         lesson={selectedLesson}
                         studentProgress={studentProgress}
@@ -322,30 +309,20 @@ const StudentDashboard = memo(() => {
                       />
                     </Suspense>
                   ) : (
-                    <Suspense fallback={
-                      <div className="flex justify-center items-center py-12">
-                        <LoadingSpinner />
-                      </div>
-                    }>
+                    <Suspense fallback={<LoadingSpinner />}>
                       <StudentWelcomeMessage siteName={platformSettings.siteName} />
                     </Suspense>
                   )}
                   
                   {finalExams.length > 0 && (
-                    <div className="space-y-3 md:space-y-4">
-                      <h3 className="text-lg md:text-xl font-semibold text-red-700 flex items-center gap-2">
-                        <Award className="w-5 h-5 md:w-6 md:h-6" />
+                    <div className="space-y-4">
+                      <h3 className="text-xl font-semibold text-red-700 flex items-center gap-2">
+                        <Award className="w-6 h-6" />
                         الاختبارات
                       </h3>
-                      <p className="text-sm md:text-base text-gray-600 mb-3 md:mb-4">
-                        قم بإجراء الاختبارات لتقييم فهمك للمادة.
-                      </p>
+                      <p className="text-gray-600 mb-4">قم بإجراء الاختبارات لتقييم فهمك للمادة.</p>
                       {finalExams.map((exam) => (
-                        <Suspense key={exam.id} fallback={
-                          <div className="flex justify-center items-center py-4">
-                            <LoadingSpinner size="sm" />
-                          </div>
-                        }>
+                        <Suspense key={exam.id} fallback={<LoadingSpinner />}>
                           <ExamAccess
                             examUrl={exam.url}
                             examName={exam.name}
