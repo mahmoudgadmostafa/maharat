@@ -1,17 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { MessageCircle, Search, Users, Send } from 'lucide-react';
+import { MessageCircle, Search, Users, Send, Loader2 } from 'lucide-react';
 import { ChatModal } from '@/components/common/ChatModal';
-import { 
-  getAvailableStudents, 
-  getUserConversations, 
+import {
+  getAvailableStudents,
+  getUserConversations,
   getMessagesBetweenUsers,
-  sendStudentMessage 
+  sendStudentMessage
 } from '@/lib/messageService';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/components/ui/use-toast';
@@ -25,107 +25,275 @@ export const StudentMessaging = () => {
   const [chatMessages, setChatMessages] = useState([]);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [messagesLoading, setMessagesLoading] = useState(false);
+  const [unsubscribeFunctions, setUnsubscribeFunctions] = useState({
+    conversations: null,
+    messages: null
+  });
+
+  // تنظيف الاشتراكات عند إلغاء التحميل
+  useEffect(() => {
+    return () => {
+      // تنظيف جميع الاشتراكات عند إلغاء تحميل المكون
+      Object.values(unsubscribeFunctions).forEach(unsub => {
+        if (unsub && typeof unsub === 'function') {
+          unsub();
+        }
+      });
+    };
+  }, [unsubscribeFunctions]);
 
   useEffect(() => {
-    if (!currentUser) return;
+    if (!currentUser?.uid) {
+      setLoading(false);
+      return;
+    }
 
-    // جلب الطلاب المتاحين
+    let isMounted = true;
+    const newUnsubscribeFunctions = { ...unsubscribeFunctions };
+
     const fetchStudents = async () => {
       try {
         const students = await getAvailableStudents(currentUser.uid);
-        setAvailableStudents(students);
+        if (isMounted) {
+          setAvailableStudents(students || []);
+        }
       } catch (error) {
         console.error('Error fetching students:', error);
-        toast({
-          title: "خطأ في جلب قائمة الطلاب",
-          description: error.message,
-          variant: "destructive"
-        });
+        if (isMounted) {
+          toast({
+            title: "خطأ في جلب قائمة الطلاب",
+            description: error.message || 'حدث خطأ غير متوقع',
+            variant: "destructive"
+          });
+        }
       }
     };
 
-    // جلب المحادثات
-    const unsubscribeConversations = getUserConversations(currentUser.uid, (convs) => {
-      setConversations(convs);
-      setLoading(false);
-    });
+    // جلب المحادثات مع معالجة الاشتراك
+    const unsubscribeConversations = getUserConversations(
+      currentUser.uid,
+      (convs) => {
+        if (isMounted) {
+          setConversations(convs || []);
+          setLoading(false);
+        }
+      },
+      (error) => {
+        console.error('Error in conversations subscription:', error);
+        if (isMounted) {
+          toast({
+            title: "خطأ في جلب المحادثات",
+            description: error.message || 'حدث خطأ في الاتصال',
+            variant: "destructive"
+          });
+        }
+      }
+    );
+
+    if (unsubscribeConversations && typeof unsubscribeConversations === 'function') {
+      newUnsubscribeFunctions.conversations = unsubscribeConversations;
+      setUnsubscribeFunctions(newUnsubscribeFunctions);
+    }
 
     fetchStudents();
 
     return () => {
-      if (unsubscribeConversations) unsubscribeConversations();
+      isMounted = false;
+      // تنظيف اشتراك المحادثات عند إلغاء التأثير
+      if (newUnsubscribeFunctions.conversations) {
+        newUnsubscribeFunctions.conversations();
+      }
     };
-  }, [currentUser]);
+  }, [currentUser?.uid]);
 
-  const getInitials = (name) => {
-    if (!name) return '?';
-    const names = name.split(' ');
-    return names.length === 1
-      ? names[0].substring(0, 2).toUpperCase()
-      : names[0][0].toUpperCase() + names[names.length - 1][0].toUpperCase();
-  };
+  const getInitials = useCallback((name) => {
+    if (!name || typeof name !== 'string') return '?';
 
-  const filteredStudents = availableStudents.filter(student =>
-    student.displayName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    student.email?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+    const trimmedName = name.trim();
+    if (trimmedName.length === 0) return '?';
 
-  const handleStartChat = (student) => {
+    const names = trimmedName.split(' ').filter(n => n.length > 0);
+    if (names.length === 0) return '?';
+
+    if (names.length === 1) {
+      return names[0].substring(0, 2).toUpperCase();
+    }
+
+    return (names[0][0] + names[names.length - 1][0]).toUpperCase();
+  }, []);
+
+  const getUserName = useCallback((user) => {
+    if (!user) return 'غير معروف';
+
+    const name = user.name || user.displayName || user.email || 'طالب';
+    return typeof name === 'string' ? name : 'طالب';
+  }, []);
+
+  const getUserEmail = useCallback((user) => {
+    if (!user || !user.email) return 'بريد إلكتروني غير متوفر';
+    return user.email;
+  }, []);
+
+  const filteredStudents = useMemo(() => {
+    if (!searchTerm.trim()) return availableStudents;
+
+    const term = searchTerm.toLowerCase().trim();
+    return availableStudents.filter(student => {
+      const name = (student.name || student.displayName || '').toLowerCase();
+      const email = (student.email || '').toLowerCase();
+
+      return name.includes(term) || email.includes(term);
+    });
+  }, [availableStudents, searchTerm]);
+
+  const handleStartChat = useCallback((student) => {
+    if (!currentUser?.uid || !student?.id) {
+      toast({
+        title: "خطأ",
+        description: "لا يمكن بدء المحادثة. المستخدم غير متوفر.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setSelectedStudent(student);
     setIsChatOpen(true);
+    setMessagesLoading(true);
+
+    // تنظيف اشتراك الرسائل السابق إن وجد
+    if (unsubscribeFunctions.messages) {
+      unsubscribeFunctions.messages();
+    }
 
     // جلب الرسائل بين المستخدمين
-    const unsubscribe = getMessagesBetweenUsers(
+    const unsubscribeMessages = getMessagesBetweenUsers(
       currentUser.uid,
       student.id,
       (messages) => {
-        setChatMessages(messages);
+        setChatMessages(messages || []);
+        setMessagesLoading(false);
+      },
+      (error) => {
+        console.error('Error fetching messages:', error);
+        setMessagesLoading(false);
+        toast({
+          title: "خطأ في جلب الرسائل",
+          description: error.message || 'حدث خطأ في الاتصال',
+          variant: "destructive"
+        });
       }
     );
 
-    return unsubscribe;
-  };
+    // حفظ دالة إلغاء الاشتراك
+    if (unsubscribeMessages && typeof unsubscribeMessages === 'function') {
+      setUnsubscribeFunctions(prev => ({
+        ...prev,
+        messages: unsubscribeMessages
+      }));
+    }
 
-  const handleSendMessage = async (message) => {
-    if (!selectedStudent || !message.trim()) return;
+    return unsubscribeMessages;
+  }, [currentUser?.uid, unsubscribeFunctions]);
+
+  const handleSendMessage = useCallback(async (message) => {
+    if (!selectedStudent?.id || !currentUser?.uid || !message?.trim()) {
+      toast({
+        title: "خطأ",
+        description: "لا يمكن إرسال الرسالة. تحقق من البيانات المطلوبة.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const trimmedMessage = message.trim();
+    if (trimmedMessage.length === 0) return;
 
     try {
+      const senderName = getUserName(currentUser);
+      const receiverName = getUserName(selectedStudent);
+
       await sendStudentMessage(
         currentUser.uid,
         selectedStudent.id,
-        message,
-        currentUser.displayName || currentUser.email,
-        selectedStudent.displayName || selectedStudent.email
+        trimmedMessage,
+        senderName,
+        receiverName
       );
     } catch (error) {
       console.error('Error sending message:', error);
       toast({
         title: "خطأ في إرسال الرسالة",
-        description: error.message,
+        description: error.message || 'حدث خطأ غير متوقع',
         variant: "destructive"
       });
     }
-  };
+  }, [selectedStudent, currentUser, getUserName]);
 
-  const formatLastMessageTime = (timestamp) => {
+  const formatLastMessageTime = useCallback((timestamp) => {
     if (!timestamp) return '';
-    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-    const now = new Date();
-    const diffInHours = (now - date) / (1000 * 60 * 60);
 
-    if (diffInHours < 1) {
-      return 'منذ قليل';
-    } else if (diffInHours < 24) {
-      return `منذ ${Math.floor(diffInHours)} ساعة`;
-    } else {
-      return date.toLocaleDateString('ar-EG');
+    let date;
+    try {
+      date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+
+      // التحقق من صحة التاريخ
+      if (isNaN(date.getTime())) {
+        return '';
+      }
+    } catch (error) {
+      console.error('Error parsing date:', error);
+      return '';
     }
-  };
+
+    const now = new Date();
+    const diffInMs = now - date;
+    const diffInMinutes = Math.floor(diffInMs / (1000 * 60));
+    const diffInHours = Math.floor(diffInMs / (1000 * 60 * 60));
+    const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24));
+
+    if (diffInMinutes < 1) {
+      return 'الآن';
+    } else if (diffInMinutes < 60) {
+      return `منذ ${diffInMinutes} دقيقة`;
+    } else if (diffInHours < 24) {
+      return `منذ ${diffInHours} ساعة`;
+    } else if (diffInDays < 7) {
+      return `منذ ${diffInDays} يوم`;
+    } else {
+      return date.toLocaleDateString('ar-EG', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      });
+    }
+  }, []);
+
+  const handleCloseChat = useCallback(() => {
+    setIsChatOpen(false);
+    setSelectedStudent(null);
+    setChatMessages([]);
+
+    // تنظيف اشتراك الرسائل عند إغلاق المحادثة
+    if (unsubscribeFunctions.messages) {
+      unsubscribeFunctions.messages();
+      setUnsubscribeFunctions(prev => ({ ...prev, messages: null }));
+    }
+  }, [unsubscribeFunctions]);
+
+  if (!currentUser) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <p className="text-gray-500">يرجى تسجيل الدخول للوصول إلى المراسلات</p>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      <div className="flex flex-col justify-center items-center h-64 space-y-4">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+        <p className="text-gray-500">جاري تحميل البيانات...</p>
       </div>
     );
   }
@@ -137,11 +305,11 @@ export const StudentMessaging = () => {
       transition={{ delay: 0.2 }}
       className="space-y-6"
     >
-      <div className="flex justify-between items-center">
-        <h2 className="text-3xl font-bold gradient-text">المراسلات</h2>
-        <Badge variant="outline" className="flex items-center gap-2">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <h2 className="text-2xl sm:text-3xl font-bold gradient-text">المراسلات</h2>
+        <Badge variant="outline" className="flex items-center gap-2 self-start sm:self-auto">
           <Users className="w-4 h-4" />
-          {availableStudents.length} طالب متاح
+          <span>{availableStudents.length} طالب متاح</span>
         </Badge>
       </div>
 
@@ -149,45 +317,57 @@ export const StudentMessaging = () => {
         {/* قائمة المحادثات الحالية */}
         <Card className="glass-effect border-0 shadow-xl">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
               <MessageCircle className="w-5 h-5 text-blue-600" />
               المحادثات الحالية
             </CardTitle>
           </CardHeader>
           <CardContent>
             {conversations.length === 0 ? (
-              <p className="text-center text-gray-500 py-8">
-                لا توجد محادثات بعد. ابدأ محادثة جديدة!
-              </p>
+              <div className="text-center py-8">
+                <MessageCircle className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                <p className="text-gray-500">
+                  لا توجد محادثات بعد. ابدأ محادثة جديدة!
+                </p>
+              </div>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
                 {conversations.map((conv) => {
-                  const otherUser = availableStudents.find(s => 
-                    s.id === (conv.senderId === currentUser.uid ? conv.receiverId : conv.senderId)
-                  );
-                  
+                  if (!conv) return null;
+
+                  const otherUserId = conv.senderId === currentUser.uid ? conv.receiverId : conv.senderId;
+                  const otherUser = availableStudents.find(s => s?.id === otherUserId);
+
                   if (!otherUser) return null;
 
                   return (
                     <div
-                      key={conv.id}
-                      className="flex items-center gap-3 p-3 rounded-lg border hover:bg-gray-50 cursor-pointer transition-colors"
+                      key={conv.id || `conv-${otherUserId}`}
+                      className="flex items-center gap-3 p-3 rounded-lg border hover:bg-gray-50 cursor-pointer transition-colors active:scale-[0.98]"
                       onClick={() => handleStartChat(otherUser)}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          handleStartChat(otherUser);
+                        }
+                      }}
                     >
-                      <Avatar className="h-10 w-10">
-                        <AvatarFallback>
-                          {getInitials(otherUser.displayName || otherUser.email)}
+                      <Avatar className="h-10 w-10 flex-shrink-0">
+                        <AvatarFallback className="bg-blue-100 text-blue-600">
+                          {getInitials(getUserName(otherUser))}
                         </AvatarFallback>
                       </Avatar>
-                      <div className="flex-1 min-w-0">
+                      <div className="flex-1 min-w-0 overflow-hidden">
                         <p className="font-medium text-sm truncate">
-                          {otherUser.displayName || otherUser.email}
+                          {getUserName(otherUser)}
                         </p>
                         <p className="text-xs text-gray-500 truncate">
-                          {conv.message}
+                          {conv.message || 'آخر رسالة...'}
                         </p>
                       </div>
-                      <div className="text-xs text-gray-400">
+                      <div className="text-xs text-gray-400 whitespace-nowrap flex-shrink-0">
                         {formatLastMessageTime(conv.timestamp)}
                       </div>
                     </div>
@@ -200,48 +380,65 @@ export const StudentMessaging = () => {
 
         {/* قائمة الطلاب المتاحين */}
         <Card className="glass-effect border-0 shadow-xl">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+          <CardHeader className="space-y-4">
+            <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
               <Users className="w-5 h-5 text-green-600" />
               الطلاب المتاحين
             </CardTitle>
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
               <Input
                 placeholder="البحث عن طالب..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
+                className="pr-10"
+                aria-label="بحث عن طالب"
               />
             </div>
           </CardHeader>
           <CardContent>
             {filteredStudents.length === 0 ? (
-              <p className="text-center text-gray-500 py-8">
-                {searchTerm ? 'لا توجد نتائج للبحث' : 'لا يوجد طلاب متاحين'}
-              </p>
+              <div className="text-center py-8">
+                <Users className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                <p className="text-gray-500">
+                  {searchTerm ? 'لا توجد نتائج للبحث' : 'لا يوجد طلاب متاحين'}
+                </p>
+              </div>
             ) : (
-              <div className="space-y-3 max-h-96 overflow-y-auto">
+              <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
                 {filteredStudents.map((student) => (
                   <div
                     key={student.id}
-                    className="flex items-center gap-3 p-3 rounded-lg border hover:bg-gray-50 cursor-pointer transition-colors"
+                    className="flex items-center gap-3 p-3 rounded-lg border hover:bg-gray-50 cursor-pointer transition-colors active:scale-[0.98]"
                     onClick={() => handleStartChat(student)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        handleStartChat(student);
+                      }
+                    }}
                   >
-                    <Avatar className="h-10 w-10">
-                      <AvatarFallback>
-                        {getInitials(student.displayName || student.email)}
+                    <Avatar className="h-10 w-10 flex-shrink-0">
+                      <AvatarFallback className="bg-green-100 text-green-600">
+                        {getInitials(getUserName(student))}
                       </AvatarFallback>
                     </Avatar>
-                    <div className="flex-1 min-w-0">
+                    <div className="flex-1 min-w-0 overflow-hidden">
                       <p className="font-medium text-sm truncate">
-                        {student.displayName || 'طالب'}
+                        {getUserName(student)}
                       </p>
                       <p className="text-xs text-gray-500 truncate">
-                        {student.email}
+                        {getUserEmail(student)}
                       </p>
                     </div>
-                    <Button size="sm" variant="outline">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="flex-shrink-0"
+                      aria-label={`مراسلة ${getUserName(student)}`}
+                    >
                       <Send className="w-4 h-4" />
                     </Button>
                   </div>
@@ -253,19 +450,18 @@ export const StudentMessaging = () => {
       </div>
 
       {/* نافذة المحادثة */}
-      <ChatModal
-        isOpen={isChatOpen}
-        onClose={() => {
-          setIsChatOpen(false);
-          setSelectedStudent(null);
-          setChatMessages([]);
-        }}
-        currentUser={currentUser}
-        targetUser={selectedStudent}
-        messages={chatMessages}
-        onSendMessage={handleSendMessage}
-      />
+      {isChatOpen && selectedStudent && (
+        <ChatModal
+          isOpen={isChatOpen}
+          onClose={handleCloseChat}
+          currentUser={currentUser}
+          targetUser={selectedStudent}
+          messages={chatMessages}
+          onSendMessage={handleSendMessage}
+          isLoading={messagesLoading}
+          targetUserName={getUserName(selectedStudent)}
+        />
+      )}
     </motion.div>
   );
 };
-
