@@ -28,9 +28,9 @@ const StudentDashboard = memo(() => {
   const [selectedLesson, setSelectedLesson] = useState(null);
   const [loading, setLoading] = useState(true);
   const [studentProgress, setStudentProgress] = useState({ completedLessons: [] });
-  const [platformSettings, setPlatformSettings] = useState({ 
-    finalExamsList: [], 
-    meetingRoomsList: [], 
+  const [platformSettings, setPlatformSettings] = useState({
+    finalExamsList: [],
+    meetingRoomsList: [],
     siteName: 'منصة مهارات التعليمية',
     studentAiToolsUrl: 'https://app.magicschool.ai/tools',
     studentAiToolsList: [] // إضافة القائمة الأساسية
@@ -106,16 +106,16 @@ const StudentDashboard = memo(() => {
         console.error("Error fetching student progress:", error);
         toast({ title: "خطأ في تحديث التقدم", variant: "destructive" });
       });
-      
+
       const settingsDocRef = doc(db, 'platformSettings', 'main');
       const unsubscribeSettings = onSnapshot(settingsDocRef, (docSnap) => {
         if (!isMounted) return;
         if (docSnap.exists()) {
           const newSettings = docSnap.data();
-          setPlatformSettings(prev => ({ 
-            ...prev, 
+          setPlatformSettings(prev => ({
+            ...prev,
             ...newSettings,
-            finalExamsList: newSettings.finalExamsList || [], 
+            finalExamsList: newSettings.finalExamsList || [],
             meetingRoomsList: newSettings.meetingRoomsList || [],
             studentAiToolsList: newSettings.studentAiToolsList || [], // التأكد من وجود القائمة
             teacherAiToolsList: newSettings.teacherAiToolsList || [] // لاستخدامها لاحقًا إذا لزم الأمر
@@ -126,15 +126,15 @@ const StudentDashboard = memo(() => {
         console.error("Error fetching platform settings:", error);
         toast({ title: "خطأ في تحديث إعدادات المنصة", variant: "destructive" });
       });
-      
+
       return [unsubscribeProgress, unsubscribeSettings];
     };
-    
+
     fetchLessonsAndUserData().then(({ userData: fetchedUserData }) => {
       if (isMounted) {
         const unsubscribers = setupListeners(fetchedUserData);
         setLoading(false);
-        
+
         if (unsubscribers) {
           return () => {
             unsubscribers.forEach(unsub => unsub && unsub());
@@ -193,14 +193,14 @@ const StudentDashboard = memo(() => {
         } else {
           eventType = 'resource_accessed';
         }
-        
+
         trackEvent(eventType, currentUser.uid, selectedLesson.id, {
           resourceTitle: title,
           resourceType: resourceType,
           resourceUrl: url
         });
       }
-      
+
       setModalState({ isOpen: true, url, title, resourceType });
     } else {
       toast({ title: "رابط غير متوفر", description: "لم يتم إضافة رابط لهذا المورد بعد.", variant: "default" });
@@ -215,7 +215,7 @@ const StudentDashboard = memo(() => {
         timeSpent: Date.now() - (window.resourceStartTime || Date.now()) // تقدير الوقت المقضي
       });
     }
-    
+
     setModalState({ isOpen: false, url: '', title: '', resourceType: '' });
   };
 
@@ -224,15 +224,26 @@ const StudentDashboard = memo(() => {
   const overallProgress = useMemo(() => {
     return totalLessons > 0 ? Math.round((completedLessonsCount / totalLessons) * 100) : 0;
   }, [totalLessons, completedLessonsCount]);
-  
+
   const finalExams = useMemo(() => {
     return (platformSettings?.finalExamsList || []).filter(exam => exam.isVisible === true);
   }, [platformSettings?.finalExamsList]);
 
-  // فلترة تطبيقات الذكاء الاصطناعي للطالب بناءً على حالة isVisible
+  // فلترة تطبيقات الذكاء الاصطناعي للطالب بناءً على حالة isVisible والمجموعات
   const filteredStudentAiTools = useMemo(() => {
-    return (platformSettings?.studentAiToolsList || []).filter(tool => tool.isVisible === true);
-  }, [platformSettings?.studentAiToolsList]);
+    return (platformSettings?.studentAiToolsList || []).filter(tool => {
+      // التحقق أولاً من أن الأداة مفعلة بشكل عام
+      if (tool.isVisible !== true) return false;
+
+      // إذا لم يتم تحديد مجموعات، فهي متاحة للجميع
+      const visibleGroups = tool.visibleForGroups || [];
+      if (visibleGroups.length === 0) return true;
+
+      // إذا كانت مخصصة لمجموعات معينة، يجب أن يكون الطالب ضمن إحداها
+      if (!userData || !userData.group) return false;
+      return visibleGroups.includes(userData.group);
+    });
+  }, [platformSettings?.studentAiToolsList, userData]);
 
   if (loading) {
     return (
@@ -259,10 +270,10 @@ const StudentDashboard = memo(() => {
         ) : (
           <>
             <Suspense fallback={<LoadingSpinner />}>
-              <StudentStatsCards 
-                lessonsCount={totalLessons} 
-                completedLessonsCount={completedLessonsCount} 
-                overallProgress={overallProgress} 
+              <StudentStatsCards
+                lessonsCount={totalLessons}
+                completedLessonsCount={completedLessonsCount}
+                overallProgress={overallProgress}
               />
             </Suspense>
 
@@ -274,20 +285,20 @@ const StudentDashboard = memo(() => {
                 className="lg:col-span-1 space-y-6"
               >
                 <Suspense fallback={<LoadingSpinner />}>
-                  <StudentLessonSelector 
-                    lessons={lessons} 
-                    selectedLessonId={selectedLesson?.id} 
+                  <StudentLessonSelector
+                    lessons={lessons}
+                    selectedLessonId={selectedLesson?.id}
                     onLessonClick={handleLessonClick}
                     studentProgress={studentProgress}
                   />
                 </Suspense>
                 <Suspense fallback={<LoadingSpinner />}>
-                  <StudentQuickAccess 
+                  <StudentQuickAccess
                     platformSettings={{
                       ...platformSettings,
                       studentAiToolsList: filteredStudentAiTools // تمرير القائمة المفلترة
-                    }} 
-                    onOpenResourceModal={openResourceModal} 
+                    }}
+                    onOpenResourceModal={openResourceModal}
                   />
                 </Suspense>
               </motion.div>
@@ -301,7 +312,7 @@ const StudentDashboard = memo(() => {
                 <div className="space-y-6">
                   {selectedLesson ? (
                     <Suspense fallback={<LoadingSpinner />}>
-                      <StudentLessonDetails 
+                      <StudentLessonDetails
                         lesson={selectedLesson}
                         studentProgress={studentProgress}
                         onMarkLessonComplete={markLessonAsComplete}
@@ -313,7 +324,7 @@ const StudentDashboard = memo(() => {
                       <StudentWelcomeMessage siteName={platformSettings.siteName} />
                     </Suspense>
                   )}
-                  
+
                   {finalExams.length > 0 && (
                     <div className="space-y-4">
                       <h3 className="text-xl font-semibold text-red-700 flex items-center gap-2">
