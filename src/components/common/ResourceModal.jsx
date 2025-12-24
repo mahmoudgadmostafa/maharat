@@ -14,7 +14,7 @@ import { ExternalLink } from 'lucide-react';
 export const ResourceModal = ({ isOpen, onClose, title, url, resourceType }) => {
   if (!isOpen || !url) return null;
 
-  const isExternalSite = resourceType === 'finalExam' || resourceType === 'meeting';
+  const isExternalSite = resourceType === 'finalExam' || resourceType === 'meeting' || resourceType === 'ai_tool';
   const [numPages, setNumPages] = useState(null);
   const [pageNumber, setPageNumber] = useState(1);
   const [fallbackToIframe, setFallbackToIframe] = useState(false);
@@ -66,13 +66,13 @@ export const ResourceModal = ({ isOpen, onClose, title, url, resourceType }) => 
         <DialogHeader>
           <DialogTitle className="text-xl gradient-text-alt">{title}</DialogTitle>
           <DialogDescription>
-            {isExternalSite 
-                ? "يتم عرض هذا المحتوى من موقع خارجي. قد تحتاج إلى التفاعل مباشرة مع النافذة أدناه."
-                : "عرض المورد."
+            {isExternalSite
+              ? "يتم عرض هذا المحتوى من موقع خارجي. قد تحتاج إلى التفاعل مباشرة مع النافذة أدناه."
+              : "عرض المورد."
             }
           </DialogDescription>
         </DialogHeader>
-        
+
         <div className="flex-grow overflow-auto py-4 border rounded-md my-2">
           {renderIframe(url)}
         </div>
