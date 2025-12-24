@@ -8,6 +8,20 @@ const StudentQuickAccess = ({ platformSettings, onOpenResourceModal }) => {
   const studentAiToolsUrl = platformSettings?.studentAiToolsUrl || defaultStudentAiToolsUrl;
   const meetingRooms = platformSettings?.meetingRoomsList || [];
 
+  /* Helper to open AI tool in a centered popup window */
+  const openAiToolPopup = (url, title) => {
+    const width = 1200;
+    const height = 800;
+    const left = (window.screen.width - width) / 2;
+    const top = (window.screen.height - height) / 2;
+
+    window.open(
+      url,
+      title,
+      `width=${width},height=${height},top=${top},left=${left},toolbar=no,location=no,status=no,menubar=no,scrollbars=yes,resizable=yes`
+    );
+  };
+
   return (
     <div className="space-y-6">
       {meetingRooms.length > 0 && (
@@ -21,7 +35,7 @@ const StudentQuickAccess = ({ platformSettings, onOpenResourceModal }) => {
           </CardHeader>
           <CardContent className="space-y-3">
             {meetingRooms.map((room) => (
-               <Button 
+              <Button
                 key={room.id}
                 variant="outline"
                 className="w-full justify-start p-3 sm:p-4 h-auto glass-button-alt border-green-300 hover:border-green-500"
@@ -46,46 +60,46 @@ const StudentQuickAccess = ({ platformSettings, onOpenResourceModal }) => {
           </CardTitle>
           <CardDescription>استكشف أدوات الذكاء الاصطناعي المساعدة.</CardDescription>
         </CardHeader>
-      <CardContent className="space-y-4">
-  {platformSettings?.studentAiToolsList && platformSettings.studentAiToolsList.length > 0 ? (
-    platformSettings.studentAiToolsList.map((tool) => (
-      <div
-        key={tool.id}
-        className="w-full flex items-center justify-between p-4 sm:p-5 h-auto bg-white/10 backdrop-blur-md border border-purple-200/30 rounded-2xl shadow-md hover:shadow-lg transition-colors duration-150"
-        onClick={() => window.open(tool.url, '_blank', 'noopener,noreferrer')}
-        role="button"
-      >
-        {/* أيقونة الذكاء */}
-        <div className="ml-3 text-purple-600">
-          <Brain className="w-5 h-5 sm:w-6 sm:h-6" />
-        </div>
+        <CardContent className="space-y-4">
+          {platformSettings?.studentAiToolsList && platformSettings.studentAiToolsList.length > 0 ? (
+            platformSettings.studentAiToolsList.map((tool) => (
+              <div
+                key={tool.id}
+                className="w-full flex items-center justify-between p-4 sm:p-5 h-auto bg-white/10 backdrop-blur-md border border-purple-200/30 rounded-2xl shadow-md hover:shadow-lg transition-colors duration-150 cursor-pointer"
+                onClick={() => openAiToolPopup(tool.url, tool.name)}
+                role="button"
+              >
+                {/* أيقونة الذكاء */}
+                <div className="ml-3 text-purple-600">
+                  <Brain className="w-5 h-5 sm:w-6 sm:h-6" />
+                </div>
 
-        {/* النص */}
-        <div className="flex-1 text-right">
-          <div className="text-orange-500 font-bold text-sm sm:text-base leading-snug truncate">
-            {tool.name}
-          </div>
-          <p className="text-xs text-green-600">فتح الغرفة</p>
-        </div>
+                {/* النص */}
+                <div className="flex-1 text-right">
+                  <div className="text-orange-500 font-bold text-sm sm:text-base leading-snug truncate">
+                    {tool.name}
+                  </div>
+                  <p className="text-xs text-green-600">فتح التطبيق</p>
+                </div>
 
-        {/* أيقونة الرابط */}
-        <div className="ml-3 text-purple-400 hover:text-purple-600 transition-colors duration-150">
-          <ExternalLink className="w-4 h-4" />
-        </div>
-      </div>
-    ))
-  ) : (
-    <div className="flex justify-center">
-      <Button
-        onClick={() => window.open(studentAiToolsUrl, '_blank', 'noopener,noreferrer')}
-        className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 px-5 py-3 text-white rounded-xl shadow-md flex items-center gap-2 text-sm sm:text-base font-medium"
-      >
-        <ExternalLink className="w-4 h-4 text-white" />
-        فتح تطبيقات الذكاء الاصطناعي
-      </Button>
-    </div>
-  )}
-</CardContent>
+                {/* أيقونة الرابط */}
+                <div className="ml-3 text-purple-400 hover:text-purple-600 transition-colors duration-150">
+                  <ExternalLink className="w-4 h-4" />
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="flex justify-center">
+              <Button
+                onClick={() => window.open(studentAiToolsUrl, '_blank', 'noopener,noreferrer')}
+                className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 px-5 py-3 text-white rounded-xl shadow-md flex items-center gap-2 text-sm sm:text-base font-medium"
+              >
+                <ExternalLink className="w-4 h-4 text-white" />
+                فتح تطبيقات الذكاء الاصطناعي
+              </Button>
+            </div>
+          )}
+        </CardContent>
 
 
 
