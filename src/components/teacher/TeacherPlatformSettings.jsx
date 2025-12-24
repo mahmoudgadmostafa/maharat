@@ -1,14 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Settings, Save, Brain, ExternalLink, Plus, Trash2, Edit, Eye, EyeOff } from 'lucide-react';
+import { Settings, Save, Brain, ExternalLink, Plus, Trash2, Edit, Eye, EyeOff, ChevronDown, Check } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuTrigger, DropdownMenuItem } from '@/components/ui/dropdown-menu';
+import { Badge } from '@/components/ui/badge';
 
-export const TeacherPlatformSettings = ({ platformSettings, onSettingsUpdate }) => {
+export const TeacherPlatformSettings = ({ platformSettings, onSettingsUpdate, students = [] }) => {
   const [siteName, setSiteName] = useState('');
   const [teacherAiToolsUrl, setTeacherAiToolsUrl] = useState('');
   const [studentAiToolsUrl, setStudentAiToolsUrl] = useState('');
@@ -20,9 +22,15 @@ export const TeacherPlatformSettings = ({ platformSettings, onSettingsUpdate }) 
 
   // متغيرات لإدارة النماذج
   const [newTeacherTool, setNewTeacherTool] = useState({ name: '', url: '', isVisible: true });
-  const [newStudentTool, setNewStudentTool] = useState({ name: '', url: '', isVisible: true });
+  const [newStudentTool, setNewStudentTool] = useState({ name: '', url: '', isVisible: true, visibleForGroups: [] });
   const [editingTeacherTool, setEditingTeacherTool] = useState(null);
   const [editingStudentTool, setEditingStudentTool] = useState(null);
+
+  const availableGroups = useMemo(() => {
+    if (!students) return [];
+    const groups = new Set(students.map(s => s.group).filter(Boolean));
+    return Array.from(groups).sort();
+  }, [students]);
 
   useEffect(() => {
     setSiteName(platformSettings?.siteName || 'منصة مهارات التعليمية');
@@ -35,7 +43,8 @@ export const TeacherPlatformSettings = ({ platformSettings, onSettingsUpdate }) 
     })));
     setStudentAiToolsList((platformSettings?.studentAiToolsList || []).map(tool => ({
       ...tool,
-      isVisible: tool.isVisible !== undefined ? tool.isVisible : true
+      isVisible: tool.isVisible !== undefined ? tool.isVisible : true,
+      visibleForGroups: tool.visibleForGroups || []
     })));
     setEmailDomain(platformSettings?.emailDomain || 'myplatform.com');
     setStudentStartingCodeNumber(platformSettings?.studentStartingCodeNumber || 1000);
@@ -80,7 +89,7 @@ export const TeacherPlatformSettings = ({ platformSettings, onSettingsUpdate }) 
   };
 
   const updateTeacherTool = async (id, updatedTool) => {
-    const updatedList = teacherAiToolsList.map(tool => 
+    const updatedList = teacherAiToolsList.map(tool =>
       tool.id === id ? { ...updatedTool, id } : tool
     );
     setTeacherAiToolsList(updatedList);
@@ -109,11 +118,38 @@ export const TeacherPlatformSettings = ({ platformSettings, onSettingsUpdate }) 
     const updatedList = [...studentAiToolsList, { ...newStudentTool, id: newId }];
     setStudentAiToolsList(updatedList);
     await saveSingleSetting('studentAiToolsList', updatedList, 'قائمة تطبيقات الطالب');
-    setNewStudentTool({ name: '', url: '', isVisible: true });
+    await saveSingleSetting('studentAiToolsList', updatedList, 'قائمة تطبيقات الطالب');
+    setNewStudentTool({ name: '', url: '', isVisible: true, visibleForGroups: [] });
+  };
+
+  const toggleGroupForNewTool = (group) => {
+    setNewStudentTool(prev => {
+      const currentGroups = prev.visibleForGroups || [];
+      if (currentGroups.includes(group)) {
+        return { ...prev, visibleForGroups: currentGroups.filter(g => g !== group) };
+      } else {
+        return { ...prev, visibleForGroups: [...currentGroups, group] };
+      }
+    });
+  };
+
+  const toggleGroupForEditingTool = (group) => {
+    setStudentAiToolsList(prev =>
+      prev.map(t => {
+        if (t.id === editingStudentTool) {
+          const currentGroups = t.visibleForGroups || [];
+          const newGroups = currentGroups.includes(group)
+            ? currentGroups.filter(g => g !== group)
+            : [...currentGroups, group];
+          return { ...t, visibleForGroups: newGroups };
+        }
+        return t;
+      })
+    );
   };
 
   const updateStudentTool = async (id, updatedTool) => {
-    const updatedList = studentAiToolsList.map(tool => 
+    const updatedList = studentAiToolsList.map(tool =>
       tool.id === id ? { ...updatedTool, id } : tool
     );
     setStudentAiToolsList(updatedList);
@@ -129,7 +165,7 @@ export const TeacherPlatformSettings = ({ platformSettings, onSettingsUpdate }) 
 
   // وظيفة تبديل حالة الظهور/الإخفاء لتطبيقات الطالب
   const toggleStudentToolVisibility = async (id) => {
-    const updatedList = studentAiToolsList.map(tool => 
+    const updatedList = studentAiToolsList.map(tool =>
       tool.id === id ? { ...tool, isVisible: !tool.isVisible } : tool
     );
     setStudentAiToolsList(updatedList);
@@ -138,7 +174,7 @@ export const TeacherPlatformSettings = ({ platformSettings, onSettingsUpdate }) 
 
   // وظيفة تبديل حالة الظهور/الإخفاء لتطبيقات المعلم
   const toggleTeacherToolVisibility = async (id) => {
-    const updatedList = teacherAiToolsList.map(tool => 
+    const updatedList = teacherAiToolsList.map(tool =>
       tool.id === id ? { ...tool, isVisible: !tool.isVisible } : tool
     );
     setTeacherAiToolsList(updatedList);
@@ -169,7 +205,7 @@ export const TeacherPlatformSettings = ({ platformSettings, onSettingsUpdate }) 
                 onChange={(e) => setSiteName(e.target.value)}
                 className="flex-1"
               />
-              <Button 
+              <Button
                 onClick={() => saveSingleSetting('siteName', siteName, 'اسم المنصة')}
                 className="w-full sm:w-auto"
               >
@@ -188,7 +224,7 @@ export const TeacherPlatformSettings = ({ platformSettings, onSettingsUpdate }) 
                 onChange={(e) => setEmailDomain(e.target.value)}
                 className="flex-1"
               />
-              <Button 
+              <Button
                 onClick={() => saveSingleSetting('emailDomain', emailDomain, 'امتداد البريد')}
                 className="w-full sm:w-auto"
               >
@@ -209,7 +245,7 @@ export const TeacherPlatformSettings = ({ platformSettings, onSettingsUpdate }) 
                 onChange={(e) => setStudentStartingCodeNumber(parseInt(e.target.value))}
                 className="flex-1"
               />
-              <Button 
+              <Button
                 onClick={() => saveSingleSetting('studentStartingCodeNumber', studentStartingCodeNumber, 'رقم بدء الأكواد')}
                 className="w-full sm:w-auto"
               >
@@ -261,8 +297,8 @@ export const TeacherPlatformSettings = ({ platformSettings, onSettingsUpdate }) 
                     value={newTeacherTool.url}
                     onChange={(e) => setNewTeacherTool(prev => ({ ...prev, url: e.target.value }))}
                   />
-                  <Button 
-                    onClick={addTeacherTool} 
+                  <Button
+                    onClick={addTeacherTool}
                     className="bg-purple-600 hover:bg-purple-700"
                   >
                     <Plus className="w-4 h-4 ml-1" /> إضافة
@@ -282,28 +318,28 @@ export const TeacherPlatformSettings = ({ platformSettings, onSettingsUpdate }) 
                         <div className="p-3 space-y-2">
                           <Input
                             value={tool.name}
-                            onChange={(e) => setTeacherAiToolsList(prev => 
+                            onChange={(e) => setTeacherAiToolsList(prev =>
                               prev.map(t => t.id === tool.id ? { ...t, name: e.target.value } : t)
                             )}
                             placeholder="اسم التطبيق"
                           />
                           <Input
                             value={tool.url}
-                            onChange={(e) => setTeacherAiToolsList(prev => 
+                            onChange={(e) => setTeacherAiToolsList(prev =>
                               prev.map(t => t.id === tool.id ? { ...t, url: e.target.value } : t)
                             )}
                             placeholder="رابط التطبيق"
                             type="url"
                           />
                           <div className="flex gap-2">
-                            <Button 
+                            <Button
                               onClick={() => updateTeacherTool(tool.id, tool)}
                               className="flex-1"
                             >
                               <Save className="w-4 h-4 mr-1" /> حفظ
                             </Button>
-                            <Button 
-                              variant="outline" 
+                            <Button
+                              variant="outline"
                               onClick={() => setEditingTeacherTool(null)}
                               className="flex-1"
                             >
@@ -320,9 +356,9 @@ export const TeacherPlatformSettings = ({ platformSettings, onSettingsUpdate }) 
                                 {tool.isVisible ? 'ظاهر' : 'مخفي'}
                               </span>
                             </div>
-                            <a 
-                              href={tool.url} 
-                              target="_blank" 
+                            <a
+                              href={tool.url}
+                              target="_blank"
                               rel="noopener noreferrer"
                               className="text-sm text-blue-500 hover:underline truncate block"
                               title={tool.url}
@@ -331,9 +367,9 @@ export const TeacherPlatformSettings = ({ platformSettings, onSettingsUpdate }) 
                             </a>
                           </div>
                           <div className="flex gap-2 self-end sm:self-center">
-                            <Button 
-                              size="sm" 
-                              variant="outline" 
+                            <Button
+                              size="sm"
+                              variant="outline"
                               onClick={() => toggleTeacherToolVisibility(tool.id)}
                               title={tool.isVisible ? 'إخفاء التطبيق' : 'إظهار التطبيق'}
                             >
@@ -343,16 +379,16 @@ export const TeacherPlatformSettings = ({ platformSettings, onSettingsUpdate }) 
                                 <Eye className="w-4 h-4" />
                               )}
                             </Button>
-                            <Button 
-                              size="sm" 
-                              variant="outline" 
+                            <Button
+                              size="sm"
+                              variant="outline"
                               onClick={() => setEditingTeacherTool(tool.id)}
                             >
                               <Edit className="w-4 h-4" />
                             </Button>
-                            <Button 
-                              size="sm" 
-                              variant="destructive" 
+                            <Button
+                              size="sm"
+                              variant="destructive"
                               onClick={() => deleteTeacherTool(tool.id)}
                             >
                               <Trash2 className="w-4 h-4" />
@@ -382,7 +418,7 @@ export const TeacherPlatformSettings = ({ platformSettings, onSettingsUpdate }) 
               {/* نموذج إضافة تطبيق جديد للطالب */}
               <div className="border rounded-lg p-4 bg-indigo-50/50">
                 <h4 className="font-semibold mb-3 text-indigo-700">إضافة تطبيق جديد</h4>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
                   <Input
                     placeholder="اسم التطبيق"
                     value={newStudentTool.name}
@@ -394,8 +430,40 @@ export const TeacherPlatformSettings = ({ platformSettings, onSettingsUpdate }) 
                     value={newStudentTool.url}
                     onChange={(e) => setNewStudentTool(prev => ({ ...prev, url: e.target.value }))}
                   />
-                  <Button 
-                    onClick={addStudentTool} 
+
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" className="w-full justify-between">
+                        <span className="truncate">
+                          {newStudentTool.visibleForGroups?.length > 0
+                            ? `محدد (${newStudentTool.visibleForGroups.length})`
+                            : 'كل المجموعات'}
+                        </span>
+                        <ChevronDown className="w-4 h-4 opacity-50" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className="w-56">
+                      <DropdownMenuItem
+                        onClick={() => setNewStudentTool(prev => ({ ...prev, visibleForGroups: [] }))}
+                        className="cursor-pointer"
+                      >
+                        <Check className={`ml-2 h-4 w-4 ${(!newStudentTool.visibleForGroups || newStudentTool.visibleForGroups.length === 0) ? "opacity-100" : "opacity-0"}`} />
+                        كل المجموعات
+                      </DropdownMenuItem>
+                      {availableGroups.map((group) => (
+                        <DropdownMenuCheckboxItem
+                          key={group}
+                          checked={newStudentTool.visibleForGroups?.includes(group)}
+                          onCheckedChange={() => toggleGroupForNewTool(group)}
+                        >
+                          {group}
+                        </DropdownMenuCheckboxItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+
+                  <Button
+                    onClick={addStudentTool}
                     className="bg-indigo-600 hover:bg-indigo-700"
                   >
                     <Plus className="w-4 h-4 ml-1" /> إضافة
@@ -413,30 +481,65 @@ export const TeacherPlatformSettings = ({ platformSettings, onSettingsUpdate }) 
                     <div key={`student-tool-${tool.id}`} className="border rounded-lg bg-white overflow-hidden">
                       {editingStudentTool === tool.id ? (
                         <div className="p-3 space-y-2">
-                          <Input
-                            value={tool.name}
-                            onChange={(e) => setStudentAiToolsList(prev => 
-                              prev.map(t => t.id === tool.id ? { ...t, name: e.target.value } : t)
-                            )}
-                            placeholder="اسم التطبيق"
-                          />
+                          <div className="flex gap-2 items-center">
+                            <Input
+                              value={tool.name}
+                              onChange={(e) => setStudentAiToolsList(prev =>
+                                prev.map(t => t.id === tool.id ? { ...t, name: e.target.value } : t)
+                              )}
+                              placeholder="اسم التطبيق"
+                              className="flex-1"
+                            />
+
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="outline" className="w-[180px] justify-between">
+                                  <span className="truncate">
+                                    {tool.visibleForGroups?.length > 0
+                                      ? `محدد (${tool.visibleForGroups.length})`
+                                      : 'كل المجموعات'}
+                                  </span>
+                                  <ChevronDown className="w-4 h-4 opacity-50" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent className="w-56">
+                                <DropdownMenuItem
+                                  onClick={() => setStudentAiToolsList(prev => prev.map(t => t.id === tool.id ? { ...t, visibleForGroups: [] } : t))}
+                                  className="cursor-pointer"
+                                >
+                                  <Check className={`ml-2 h-4 w-4 ${(!tool.visibleForGroups || tool.visibleForGroups.length === 0) ? "opacity-100" : "opacity-0"}`} />
+                                  كل المجموعات
+                                </DropdownMenuItem>
+                                {availableGroups.map((group) => (
+                                  <DropdownMenuCheckboxItem
+                                    key={group}
+                                    checked={tool.visibleForGroups?.includes(group)}
+                                    onCheckedChange={() => toggleGroupForEditingTool(group)}
+                                  >
+                                    {group}
+                                  </DropdownMenuCheckboxItem>
+                                ))}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+
                           <Input
                             value={tool.url}
-                            onChange={(e) => setStudentAiToolsList(prev => 
+                            onChange={(e) => setStudentAiToolsList(prev =>
                               prev.map(t => t.id === tool.id ? { ...t, url: e.target.value } : t)
                             )}
                             placeholder="رابط التطبيق"
                             type="url"
                           />
                           <div className="flex gap-2">
-                            <Button 
+                            <Button
                               onClick={() => updateStudentTool(tool.id, tool)}
                               className="flex-1"
                             >
                               <Save className="w-4 h-4 mr-1" /> حفظ
                             </Button>
-                            <Button 
-                              variant="outline" 
+                            <Button
+                              variant="outline"
                               onClick={() => setEditingStudentTool(null)}
                               className="flex-1"
                             >
@@ -447,15 +550,26 @@ export const TeacherPlatformSettings = ({ platformSettings, onSettingsUpdate }) 
                       ) : (
                         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 gap-2">
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1">
+                            <div className="flex flex-wrap items-center gap-2 mb-1">
                               <p className="font-medium truncate">{tool.name}</p>
                               <span className={`text-xs px-2 py-0.5 rounded-full ${tool.isVisible ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
                                 {tool.isVisible ? 'ظاهر' : 'مخفي'}
                               </span>
+                              {tool.visibleForGroups && tool.visibleForGroups.length > 0 ? (
+                                tool.visibleForGroups.map(group => (
+                                  <Badge key={group} variant="secondary" className="text-[10px] px-1 h-5">
+                                    {group}
+                                  </Badge>
+                                ))
+                              ) : (
+                                <Badge variant="outline" className="text-[10px] px-1 h-5 text-gray-500 border-dashed">
+                                  الكل
+                                </Badge>
+                              )}
                             </div>
-                            <a 
-                              href={tool.url} 
-                              target="_blank" 
+                            <a
+                              href={tool.url}
+                              target="_blank"
                               rel="noopener noreferrer"
                               className="text-sm text-blue-500 hover:underline truncate block"
                               title={tool.url}
@@ -464,9 +578,9 @@ export const TeacherPlatformSettings = ({ platformSettings, onSettingsUpdate }) 
                             </a>
                           </div>
                           <div className="flex gap-2 self-end sm:self-center">
-                            <Button 
-                              size="sm" 
-                              variant="outline" 
+                            <Button
+                              size="sm"
+                              variant="outline"
                               onClick={() => toggleStudentToolVisibility(tool.id)}
                               title={tool.isVisible ? 'إخفاء التطبيق' : 'إظهار التطبيق'}
                             >
@@ -476,16 +590,16 @@ export const TeacherPlatformSettings = ({ platformSettings, onSettingsUpdate }) 
                                 <Eye className="w-4 h-4" />
                               )}
                             </Button>
-                            <Button 
-                              size="sm" 
-                              variant="outline" 
+                            <Button
+                              size="sm"
+                              variant="outline"
                               onClick={() => setEditingStudentTool(tool.id)}
                             >
                               <Edit className="w-4 h-4" />
                             </Button>
-                            <Button 
-                              size="sm" 
-                              variant="destructive" 
+                            <Button
+                              size="sm"
+                              variant="destructive"
                               onClick={() => deleteStudentTool(tool.id)}
                             >
                               <Trash2 className="w-4 h-4" />
