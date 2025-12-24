@@ -37,8 +37,8 @@ const TeacherDashboard = memo(() => {
   const [lessons, setLessons] = useState([]);
   const [students, setStudents] = useState([]);
   const [studentProgress, setStudentProgress] = useState({});
-  const [platformSettings, setPlatformSettings] = useState({ 
-    finalExamsList: [], 
+  const [platformSettings, setPlatformSettings] = useState({
+    finalExamsList: [],
     meetingRoomsList: [],
     siteName: 'منصة مهارات التعليمية',
     teacherAiToolsUrl: 'https://app.magicschool.ai/tools',
@@ -59,7 +59,7 @@ const TeacherDashboard = memo(() => {
       const userDocPromise = getDoc(doc(db, 'users', currentUser.uid));
       const lessonsSnapshotPromise = getDocs(collection(db, 'lessons'));
       const usersSnapshotPromise = getDocs(collection(db, 'users'));
-      
+
       const [userDocResult, lessonsSnapshotResult, usersSnapshotResult] = await Promise.all([
         userDocPromise,
         lessonsSnapshotPromise,
@@ -88,11 +88,11 @@ const TeacherDashboard = memo(() => {
     if (!currentUser || !messagesIndexReady) return null;
 
     const qAllMessages = query(
-      collection(db, 'messages'), 
-      where('participants', 'array-contains', currentUser.uid), 
+      collection(db, 'messages'),
+      where('participants', 'array-contains', currentUser.uid),
       orderBy('timestamp', 'asc')
     );
-    
+
     const unsubscribe = onSnapshot(qAllMessages, (querySnapshot) => {
       const msgs = [];
       let count = 0;
@@ -103,7 +103,7 @@ const TeacherDashboard = memo(() => {
           count++;
         }
       });
-      setAllMessages(msgs); 
+      setAllMessages(msgs);
       setUnreadMessagesCount(count);
     }, (error) => {
       console.error("Error in messages snapshot listener:", error);
@@ -130,35 +130,35 @@ const TeacherDashboard = memo(() => {
     setLoading(true);
 
     const initialFetch = async () => {
-        await fetchStaticData();
-        if (isMounted) {
-            const progressCollectionRef = collection(db, 'studentProgress');
-            const unsubscribeProgress = onSnapshot(progressCollectionRef, (snapshot) => {
-                if (!isMounted) return;
-                const progressData = {};
-                snapshot.docs.forEach(d => { progressData[d.id] = d.data(); });
-                setStudentProgress(progressData);
-            }, (error) => { if (!isMounted) return; console.error("Error fetching student progress:", error); toast({ title: "خطأ في تحديث تقدم الطلاب", variant: "destructive" }); });
+      await fetchStaticData();
+      if (isMounted) {
+        const progressCollectionRef = collection(db, 'studentProgress');
+        const unsubscribeProgress = onSnapshot(progressCollectionRef, (snapshot) => {
+          if (!isMounted) return;
+          const progressData = {};
+          snapshot.docs.forEach(d => { progressData[d.id] = d.data(); });
+          setStudentProgress(progressData);
+        }, (error) => { if (!isMounted) return; console.error("Error fetching student progress:", error); toast({ title: "خطأ في تحديث تقدم الطلاب", variant: "destructive" }); });
 
-            const settingsDocRef = doc(db, 'platformSettings', 'main');
-            const unsubscribeSettings = onSnapshot(settingsDocRef, async (docSnap) => {
-                if (!isMounted) return;
-                if (docSnap.exists()) {
-                    const newSettings = docSnap.data();
-                    setPlatformSettings(prev => ({ ...prev, ...newSettings, finalExamsList: newSettings.finalExamsList || [], meetingRoomsList: newSettings.meetingRoomsList || [] }));
-                } else {
-                    try {
-                        await setDoc(settingsDocRef, { finalExamsList: [], meetingRoomsList: [], siteName: 'منصة مهارات التعليمية', teacherAiToolsUrl: 'https://app.magicschool.ai/tools', studentAiToolsUrl: 'https://app.magicschool.ai/tools' });
-                        setPlatformSettings(prev => ({ ...prev, finalExamsList: [], meetingRoomsList: [] }));
-                    } catch (e) { console.error("Error setting initial platform settings:", e); }
-                }
-            }, (error) => { if (!isMounted) return; console.error("Error fetching platform settings:", error); toast({ title: "خطأ في تحديث إعدادات المنصة", variant: "destructive" }); });
-            
-            setMessagesIndexReady(true);
+        const settingsDocRef = doc(db, 'platformSettings', 'main');
+        const unsubscribeSettings = onSnapshot(settingsDocRef, async (docSnap) => {
+          if (!isMounted) return;
+          if (docSnap.exists()) {
+            const newSettings = docSnap.data();
+            setPlatformSettings(prev => ({ ...prev, ...newSettings, finalExamsList: newSettings.finalExamsList || [], meetingRoomsList: newSettings.meetingRoomsList || [] }));
+          } else {
+            try {
+              await setDoc(settingsDocRef, { finalExamsList: [], meetingRoomsList: [], siteName: 'منصة مهارات التعليمية', teacherAiToolsUrl: 'https://app.magicschool.ai/tools', studentAiToolsUrl: 'https://app.magicschool.ai/tools' });
+              setPlatformSettings(prev => ({ ...prev, finalExamsList: [], meetingRoomsList: [] }));
+            } catch (e) { console.error("Error setting initial platform settings:", e); }
+          }
+        }, (error) => { if (!isMounted) return; console.error("Error fetching platform settings:", error); toast({ title: "خطأ في تحديث إعدادات المنصة", variant: "destructive" }); });
 
-            if(isMounted) { setLoading(false); }
-            return () => { unsubscribeProgress(); unsubscribeSettings(); };
-        }
+        setMessagesIndexReady(true);
+
+        if (isMounted) { setLoading(false); }
+        return () => { unsubscribeProgress(); unsubscribeSettings(); };
+      }
     };
     initialFetch();
     return () => { isMounted = false; };
@@ -166,7 +166,7 @@ const TeacherDashboard = memo(() => {
 
   useEffect(() => {
     if (!messagesIndexReady) return;
-    
+
     const unsubscribeMessages = setupMessagesListener();
     return () => {
       if (unsubscribeMessages) unsubscribeMessages();
@@ -188,22 +188,22 @@ const TeacherDashboard = memo(() => {
       setChatMessages([]);
       return;
     }
-    
+
     const relevantMessages = allMessages.filter(msg => msg.participants.includes(chatTargetUser.id));
     setChatMessages(relevantMessages);
 
   }, [chatModalOpen, currentUser, chatTargetUser, allMessages]);
-  
+
 
   const handleSettingsUpdate = async (newSettings) => {
     try {
       const settingsRef = doc(db, 'platformSettings', 'main');
       const processedSettings = { ...newSettings, finalExamsList: newSettings.finalExamsList || [], meetingRoomsList: newSettings.meetingRoomsList || [] };
       await setDoc(settingsRef, processedSettings, { merge: true });
-      
+
       // تحديث إعدادات المنصة في AuthContext أيضاً
       await updatePlatformSettings(processedSettings);
-      
+
       toast({ title: "تم تحديث الإعدادات" });
     } catch (error) {
       console.error("Error updating platform settings:", error);
@@ -250,7 +250,7 @@ const TeacherDashboard = memo(() => {
   }
 
   const getStudentNameById = (studentId) => students.find(s => s.id === studentId)?.name || 'طالب غير معروف';
-  
+
   const displayedNotifications = [...allMessages]
     .filter(n => n.receiverId === currentUser?.uid && (!n.readBy || !n.readBy[currentUser?.uid]))
     .sort((a, b) => (b.timestamp?.toMillis() || 0) - (a.timestamp?.toMillis() || 0))
@@ -301,11 +301,11 @@ const TeacherDashboard = memo(() => {
                       جاري إعداد نظام الرسائل...
                     </DropdownMenuItem>
                   ) : displayedNotifications.length === 0 ? (
-                     <DropdownMenuItem disabled className="text-center text-gray-500 py-3">لا توجد رسائل جديدة</DropdownMenuItem>
+                    <DropdownMenuItem disabled className="text-center text-gray-500 py-3">لا توجد رسائل جديدة</DropdownMenuItem>
                   ) : (
                     displayedNotifications.map((notif) => (
-                      <DropdownMenuItem 
-                        key={notif.id} 
+                      <DropdownMenuItem
+                        key={notif.id}
                         className="flex items-start gap-2 font-semibold"
                         onClick={() => openChatWithStudentFromNotification(notif.senderId)}
                       >
@@ -321,10 +321,10 @@ const TeacherDashboard = memo(() => {
                   )}
                 </DropdownMenuContent>
               </DropdownMenu>
-              <Button 
-                onClick={logout} 
-                variant="outline" 
-                size="sm" 
+              <Button
+                onClick={logout}
+                variant="outline"
+                size="sm"
                 className="flex items-center gap-1.5 text-xs sm:text-sm"
               >
                 <LogOut className="w-3 h-3" />
@@ -340,55 +340,55 @@ const TeacherDashboard = memo(() => {
         <Tabs defaultValue="content" value={activeTab} onValueChange={setActiveTab} className="w-full">
           <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}>
             <TabsList className="flex w-full bg-white/70 backdrop-blur-md p-1 rounded-lg shadow-lg mb-4 sm:mb-8 overflow-hidden">
-  <TabsTrigger 
-    value="content" 
-    className="flex-1 flex flex-col items-center justify-center gap-1 py-2 text-xs sm:text-sm min-w-0"
-  >
-    <Edit3 className="w-3 h-3 sm:w-4 sm:h-4" />
-    <span className="truncate">محتوى</span>
-  </TabsTrigger>
-  <TabsTrigger 
-    value="students" 
-    className="flex-1 flex flex-col items-center justify-center gap-1 py-2 text-xs sm:text-sm min-w-0"
-  >
-    <Users className="w-3 h-3 sm:w-4 sm:h-4" />
-    <span className="truncate">طلاب</span>
-  </TabsTrigger>
-  <TabsTrigger 
-    value="messages" 
-    className="flex-1 flex flex-col items-center justify-center gap-1 py-2 text-xs sm:text-sm min-w-0"
-  >
-    <MessageSquare className="w-3 h-3 sm:w-4 sm:h-4" />
-    <span className="truncate">رسائل</span>
-  </TabsTrigger>
-  <TabsTrigger 
-    value="analytics" 
-    className="flex-1 flex flex-col items-center justify-center gap-1 py-2 text-xs sm:text-sm min-w-0"
-  >
-    <BarChart3 className="w-3 h-3 sm:w-4 sm:h-4" />
-    <span className="truncate">احصاء</span>
-  </TabsTrigger>
-  <TabsTrigger 
-    value="meeting" 
-    className="flex-1 flex flex-col items-center justify-center gap-1 py-2 text-xs sm:text-sm min-w-0"
-  >
-    <Video className="w-3 h-3 sm:w-4 sm:h-4" />
-    <span className="truncate">اجتماع</span>
-  </TabsTrigger>
-  <TabsTrigger 
-    value="platformSettings" 
-    className="flex-1 flex flex-col items-center justify-center gap-1 py-2 text-xs sm:text-sm min-w-0"
-  >
-    <Settings className="w-3 h-3 sm:w-4 sm:h-4" />
-    <span className="truncate">إعدادات</span>
-  </TabsTrigger>
-</TabsList>
+              <TabsTrigger
+                value="content"
+                className="flex-1 flex flex-col items-center justify-center gap-1 py-2 text-xs sm:text-sm min-w-0"
+              >
+                <Edit3 className="w-3 h-3 sm:w-4 sm:h-4" />
+                <span className="truncate">المحتوى</span>
+              </TabsTrigger>
+              <TabsTrigger
+                value="students"
+                className="flex-1 flex flex-col items-center justify-center gap-1 py-2 text-xs sm:text-sm min-w-0"
+              >
+                <Users className="w-3 h-3 sm:w-4 sm:h-4" />
+                <span className="truncate">الطلاب</span>
+              </TabsTrigger>
+              <TabsTrigger
+                value="messages"
+                className="flex-1 flex flex-col items-center justify-center gap-1 py-2 text-xs sm:text-sm min-w-0"
+              >
+                <MessageSquare className="w-3 h-3 sm:w-4 sm:h-4" />
+                <span className="truncate">الرسائل</span>
+              </TabsTrigger>
+              <TabsTrigger
+                value="analytics"
+                className="flex-1 flex flex-col items-center justify-center gap-1 py-2 text-xs sm:text-sm min-w-0"
+              >
+                <BarChart3 className="w-3 h-3 sm:w-4 sm:h-4" />
+                <span className="truncate">التحليلات</span>
+              </TabsTrigger>
+              <TabsTrigger
+                value="meeting"
+                className="flex-1 flex flex-col items-center justify-center gap-1 py-2 text-xs sm:text-sm min-w-0"
+              >
+                <Video className="w-3 h-3 sm:w-4 sm:h-4" />
+                <span className="truncate">الاجتماعات</span>
+              </TabsTrigger>
+              <TabsTrigger
+                value="platformSettings"
+                className="flex-1 flex flex-col items-center justify-center gap-1 py-2 text-xs sm:text-sm min-w-0"
+              >
+                <Settings className="w-3 h-3 sm:w-4 sm:h-4" />
+                <span className="truncate">الإعدادات</span>
+              </TabsTrigger>
+            </TabsList>
           </motion.div>
-        
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }} 
-            animate={{ opacity: 1, y: 0 }} 
-            transition={{ delay: 0.1 }} 
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
             className="mb-4 sm:mb-8"
           >
             <Card className="glass-effect border-0 shadow-lg sm:shadow-xl bg-gradient-to-r from-purple-600/10 to-blue-600/10">
@@ -436,8 +436,8 @@ const TeacherDashboard = memo(() => {
                   </div>
                 ) : (
                   <div className="flex justify-center">
-                    <Button 
-                      onClick={() => window.open(platformSettings.teacherAiToolsUrl || 'https://app.magicschool.ai/tools', '_blank', 'noopener,noreferrer')} 
+                    <Button
+                      onClick={() => window.open(platformSettings.teacherAiToolsUrl || 'https://app.magicschool.ai/tools', '_blank', 'noopener,noreferrer')}
                       className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 px-4 py-2 sm:px-6 sm:py-3 text-white rounded-lg sm:rounded-xl shadow-lg hover:shadow-xl transition duration-300 flex items-center space-x-2"
                     >
                       <ExternalLink className="w-3 h-3 sm:w-4 sm:h-4 text-white" />
@@ -451,21 +451,21 @@ const TeacherDashboard = memo(() => {
 
           <TabsContent value="content">
             <Suspense fallback={<LoadingSpinner />}>
-              <TeacherContentManager 
-                lessons={lessons} 
-                onLessonsUpdate={fetchStaticData} 
-                platformSettings={platformSettings} 
-                onSettingsUpdate={handleSettingsUpdate} 
+              <TeacherContentManager
+                lessons={lessons}
+                onLessonsUpdate={fetchStaticData}
+                platformSettings={platformSettings}
+                onSettingsUpdate={handleSettingsUpdate}
               />
             </Suspense>
           </TabsContent>
           <TabsContent value="students">
             <Suspense fallback={<LoadingSpinner />}>
-              <TeacherStudentsManager 
-                students={students} 
-                onStudentsUpdate={fetchStaticData} 
-                lessons={lessons} 
-                studentProgress={studentProgress} 
+              <TeacherStudentsManager
+                students={students}
+                onStudentsUpdate={fetchStaticData}
+                lessons={lessons}
+                studentProgress={studentProgress}
               />
             </Suspense>
           </TabsContent>
@@ -476,26 +476,27 @@ const TeacherDashboard = memo(() => {
           </TabsContent>
           <TabsContent value="analytics">
             <Suspense fallback={<LoadingSpinner />}>
-              <TeacherAnalytics 
-                students={students} 
-                lessons={lessons} 
-                studentProgress={studentProgress} 
+              <TeacherAnalytics
+                students={students}
+                lessons={lessons}
+                studentProgress={studentProgress}
               />
             </Suspense>
           </TabsContent>
           <TabsContent value="meeting">
             <Suspense fallback={<LoadingSpinner />}>
-              <TeacherMeetingRoomManager 
-                platformSettings={platformSettings} 
-                onSettingsUpdate={handleSettingsUpdate} 
+              <TeacherMeetingRoomManager
+                platformSettings={platformSettings}
+                onSettingsUpdate={handleSettingsUpdate}
               />
             </Suspense>
           </TabsContent>
           <TabsContent value="platformSettings">
             <Suspense fallback={<LoadingSpinner />}>
-              <TeacherPlatformSettings 
-                platformSettings={platformSettings} 
-                onSettingsUpdate={handleSettingsUpdate} 
+              <TeacherPlatformSettings
+                platformSettings={platformSettings}
+                onSettingsUpdate={handleSettingsUpdate}
+                students={students}
               />
             </Suspense>
           </TabsContent>
@@ -507,8 +508,8 @@ const TeacherDashboard = memo(() => {
         <ChatModal
           isOpen={chatModalOpen}
           onClose={() => { setChatModalOpen(false); setChatTargetUser(null); }}
-          currentUser={currentUser} 
-          targetUser={chatTargetUser} 
+          currentUser={currentUser}
+          targetUser={chatTargetUser}
           messages={chatMessages}
           onSendMessage={handleSendMessageInChat}
         />
