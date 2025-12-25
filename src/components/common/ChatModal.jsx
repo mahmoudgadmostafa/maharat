@@ -158,11 +158,10 @@ export const ChatModal = ({ isOpen, onClose, currentUser, targetUser, messages, 
                   )}
 
                   <div
-                    className={`relative max-w-[70%] p-3 rounded-lg shadow cursor-pointer group-hover:bg-opacity-90 ${
-                      isCurrentSender
-                        ? 'bg-gradient-to-r from-blue-500 to-sky-500 text-white rounded-br-none'
-                        : 'bg-white text-gray-800 border rounded-bl-none'
-                    }`}
+                    className={`relative max-w-[70%] p-3 rounded-lg shadow cursor-pointer group-hover:bg-opacity-90 ${isCurrentSender
+                      ? 'bg-gradient-to-r from-blue-500 to-sky-500 text-white rounded-br-none'
+                      : 'bg-white text-gray-800 border rounded-bl-none'
+                      }`}
                   >
                     {editingMessageId === msg.id ? (
                       <>

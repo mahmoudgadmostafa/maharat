@@ -70,6 +70,7 @@ export const TeacherPlatformSettings = ({ platformSettings, onSettingsUpdate, st
     }
   };
 
+
   // وظائف إدارة روابط المعلم
   const addTeacherTool = async () => {
     if (!newTeacherTool.name.trim() || !newTeacherTool.url.trim()) {

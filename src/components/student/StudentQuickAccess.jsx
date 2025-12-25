@@ -4,8 +4,6 @@ import { Button } from '@/components/ui/button';
 import { Brain, ExternalLink, Video as MeetingIcon } from 'lucide-react'; // Removed Award
 
 const StudentQuickAccess = ({ platformSettings, onOpenResourceModal }) => {
-  const defaultStudentAiToolsUrl = 'https://app.magicschool.ai/tools';
-  const studentAiToolsUrl = platformSettings?.studentAiToolsUrl || defaultStudentAiToolsUrl;
   const meetingRooms = platformSettings?.meetingRoomsList || [];
 
   /* Helper to open AI tool in a centered popup window */
@@ -52,17 +50,17 @@ const StudentQuickAccess = ({ platformSettings, onOpenResourceModal }) => {
         </Card>
       )}
 
-      <Card className="glass-effect-alt border-0 shadow-xl bg-gradient-to-r from-purple-600/10 to-blue-600/10">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-purple-700">
-            <Brain className="w-6 h-6" />
-            تطبيقات الذكاء الاصطناعي
-          </CardTitle>
-          <CardDescription>استكشف أدوات الذكاء الاصطناعي المساعدة.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {platformSettings?.studentAiToolsList && platformSettings.studentAiToolsList.length > 0 ? (
-            platformSettings.studentAiToolsList.map((tool) => (
+      {platformSettings?.studentAiToolsList && platformSettings.studentAiToolsList.length > 0 && (
+        <Card className="glass-effect-alt border-0 shadow-xl bg-gradient-to-r from-purple-600/10 to-blue-600/10">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-purple-700">
+              <Brain className="w-6 h-6" />
+              تطبيقات الذكاء الاصطناعي
+            </CardTitle>
+            <CardDescription>استكشف أدوات الذكاء الاصطناعي المساعدة.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {platformSettings.studentAiToolsList.map((tool) => (
               <div
                 key={tool.id}
                 className="w-full flex items-center justify-between p-4 sm:p-5 h-auto bg-white/10 backdrop-blur-md border border-purple-200/30 rounded-2xl shadow-md hover:shadow-lg transition-colors duration-150 cursor-pointer"
@@ -87,26 +85,10 @@ const StudentQuickAccess = ({ platformSettings, onOpenResourceModal }) => {
                   <ExternalLink className="w-4 h-4" />
                 </div>
               </div>
-            ))
-          ) : (
-            <div className="flex justify-center">
-              <Button
-                onClick={() => window.open(studentAiToolsUrl, '_blank', 'noopener,noreferrer')}
-                className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 px-5 py-3 text-white rounded-xl shadow-md flex items-center gap-2 text-sm sm:text-base font-medium"
-              >
-                <ExternalLink className="w-4 h-4 text-white" />
-                فتح تطبيقات الذكاء الاصطناعي
-              </Button>
-            </div>
-          )}
-        </CardContent>
-
-
-
-
-      </Card>
-
-      {/* Final Exam section removed from here, will be shown in StudentLessonDetails or WelcomeMessage */}
+            ))}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };

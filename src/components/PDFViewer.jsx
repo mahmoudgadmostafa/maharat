@@ -1,17 +1,68 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { trackEvent, EVENT_TYPES } from '@/lib/analyticsService';
-import { FileText, ExternalLink, Eye, EyeOff, Download } from 'lucide-react';
+import { FileText, ExternalLink, Eye, EyeOff, Download, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/contexts/AuthContext';
+import { useMotivation } from '@/contexts/MotivationContext';
+import { MOTIVATION_TYPES } from '@/lib/motivationMessages';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 const PDFViewer = ({ pdfUrl, lessonId, className = "" }) => {
   const { currentUser } = useAuth();
   const studentId = currentUser?.uid;
   const [isExpanded, setIsExpanded] = useState(false);
   const [pdfError, setPdfError] = useState(false);
+  const [isUnlocked, setIsUnlocked] = useState(false);
+  const [isCompleted, setIsCompleted] = useState(false);
+  const { showMotivation } = useMotivation();
+
+  // Save progress to Firestore
+  const saveProgress = useCallback(async (unlocked, completed) => {
+    if (!studentId || !lessonId) return;
+    try {
+      const progressRef = doc(db, 'contentProgress', `${studentId}_${lessonId}_pdf`);
+      await setDoc(progressRef, {
+        isUnlocked: unlocked,
+        isCompleted: completed,
+        lastUpdated: new Date().toISOString()
+      }, { merge: true });
+    } catch (error) {
+      console.error("Error saving PDF progress:", error);
+    }
+  }, [studentId, lessonId]);
+
+  // Load progress from Firestore
+  useEffect(() => {
+    const loadProgress = async () => {
+      if (!studentId || !lessonId) return;
+
+      // 🔄 Reset local state immediately on lesson change to prevent leakage
+      setIsUnlocked(false);
+      setIsCompleted(false);
+      setIsExpanded(false);
+
+      try {
+        const progressRef = doc(db, 'contentProgress', `${studentId}_${lessonId}_pdf`);
+        const snap = await getDoc(progressRef);
+        if (snap.exists()) {
+          const data = snap.data();
+          setIsUnlocked(data.isUnlocked || false);
+          setIsCompleted(data.isCompleted || false);
+        }
+      } catch (error) {
+        console.error("Error loading PDF progress:", error);
+      }
+    };
+    loadProgress();
+  }, [studentId, lessonId]);
 
   const handlePDFOpen = () => {
+    if (!isUnlocked) {
+      setIsUnlocked(true);
+      saveProgress(true, isCompleted);
+    }
     if (studentId && lessonId) {
       trackEvent(studentId, EVENT_TYPES.PDF_OPENED, lessonId, null, {
         pdfUrl,
@@ -23,6 +74,10 @@ const PDFViewer = ({ pdfUrl, lessonId, className = "" }) => {
 
   const handleToggleExpanded = () => {
     if (!isExpanded && studentId && lessonId) {
+      if (!isUnlocked) {
+        setIsUnlocked(true);
+        saveProgress(true, isCompleted);
+      }
       trackEvent(studentId, EVENT_TYPES.PDF_OPENED, lessonId, null, {
         pdfUrl,
         timestamp: new Date().toISOString(),
@@ -129,10 +184,33 @@ const PDFViewer = ({ pdfUrl, lessonId, className = "" }) => {
               <ExternalLink className="w-4 h-4 ml-1" />
               فتح خارجي
             </Button>
+            <Button
+              variant={isCompleted ? "success" : "default"}
+              size="sm"
+              onClick={() => {
+                setIsCompleted(true);
+                saveProgress(isUnlocked, true);
+                showMotivation(MOTIVATION_TYPES.PDF_VIEWED);
+              }}
+              disabled={!isUnlocked || isCompleted}
+              className={`${isCompleted ? 'bg-green-600 hover:bg-green-700' : 'bg-blue-600 hover:bg-blue-700'} text-white shadow-sm transition-all duration-300 disabled:opacity-50 disabled:grayscale`}
+            >
+              {isCompleted ? (
+                <>
+                  <CheckCircle className="w-4 h-4 ml-1" />
+                  تم الاطلاع ✓
+                </>
+              ) : (
+                <>
+                  <FileText className="w-4 h-4 ml-1" />
+                  تم الاطلاع
+                </>
+              )}
+            </Button>
           </div>
         </CardTitle>
       </CardHeader>
-      
+
       {isExpanded && (
         <CardContent className="pt-0">
           {pdfError ? (
@@ -199,7 +277,7 @@ const PDFViewer = ({ pdfUrl, lessonId, className = "" }) => {
           </div>
         </CardContent>
       )}
-      
+
       {!isExpanded && (
         <CardContent className="pt-0">
           <p className="text-sm text-muted-foreground text-center">

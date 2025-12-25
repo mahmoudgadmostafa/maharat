@@ -37,6 +37,9 @@ const TeacherDashboard = memo(() => {
   const [lessons, setLessons] = useState([]);
   const [students, setStudents] = useState([]);
   const [studentProgress, setStudentProgress] = useState({});
+  const [videoProgress, setVideoProgress] = useState({});
+  const [quizProgress, setQuizProgress] = useState({});
+  const [analyticsEvents, setAnalyticsEvents] = useState([]);
   const [platformSettings, setPlatformSettings] = useState({
     finalExamsList: [],
     meetingRoomsList: [],
@@ -140,6 +143,47 @@ const TeacherDashboard = memo(() => {
           setStudentProgress(progressData);
         }, (error) => { if (!isMounted) return; console.error("Error fetching student progress:", error); toast({ title: "خطأ في تحديث تقدم الطلاب", variant: "destructive" }); });
 
+        // إضافة مستمع لتقدم الفيديوهات
+        const videoProgressCollectionRef = collection(db, 'videoProgress');
+        const unsubscribeVideo = onSnapshot(videoProgressCollectionRef, (snapshot) => {
+          if (!isMounted) return;
+          const videoData = {};
+          snapshot.docs.forEach(d => { videoData[d.id] = d.data(); });
+          setVideoProgress(videoData);
+        }, (error) => { if (!isMounted) return; console.error("Error fetching video progress:", error); });
+
+        // إضافة مستمع لتقدم الاختبارات والملفات
+        const contentProgressCollectionRef = collection(db, 'contentProgress');
+        const unsubscribeContent = onSnapshot(contentProgressCollectionRef, (snapshot) => {
+          if (!isMounted) return;
+          const contentData = {};
+          snapshot.docs.forEach(d => { contentData[d.id] = d.data(); });
+          setQuizProgress(contentData);
+        }, (error) => { if (!isMounted) return; console.error("Error fetching content progress:", error); });
+
+        // إضافة مستمع لأحداث التحليلات (آخر 14 يوم)
+        const fourteenDaysAgo = new Date();
+        fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
+
+        const eventsQuery = query(
+          collection(db, 'analyticsEvents'),
+          where('timestamp', '>=', fourteenDaysAgo),
+          orderBy('timestamp', 'desc')
+        );
+
+        const unsubscribeEvents = onSnapshot(eventsQuery, (snapshot) => {
+          if (!isMounted) return;
+          const events = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          setAnalyticsEvents(events);
+        }, (error) => {
+          if (!isMounted) return;
+          console.error("Error fetching analytics events:", error);
+          // قد يفشل الفهرس إذا لم يكن منشئاً بعد
+          if (error.code === 'failed-precondition') {
+            console.warn("Analytics events index required.");
+          }
+        });
+
         const settingsDocRef = doc(db, 'platformSettings', 'main');
         const unsubscribeSettings = onSnapshot(settingsDocRef, async (docSnap) => {
           if (!isMounted) return;
@@ -157,7 +201,13 @@ const TeacherDashboard = memo(() => {
         setMessagesIndexReady(true);
 
         if (isMounted) { setLoading(false); }
-        return () => { unsubscribeProgress(); unsubscribeSettings(); };
+        return () => {
+          unsubscribeProgress();
+          unsubscribeSettings();
+          unsubscribeVideo();
+          unsubscribeContent();
+          unsubscribeEvents();
+        };
       }
     };
     initialFetch();
@@ -262,23 +312,65 @@ const TeacherDashboard = memo(() => {
       <div className="bg-white/80 backdrop-blur-sm border-b shadow-sm sticky top-0 z-50">
         <div className="container mx-auto px-2 sm:px-4 py-2 sm:py-3">
           <div className="flex flex-col sm:flex-row justify-between items-center gap-2">
-            <div className="flex items-center space-x-2 space-x-reverse">
+            <div className="flex items-center gap-3 sm:gap-4">
               <motion.div
+                className="hidden md:block"
                 animate={{ rotate: [0, 5, -5, 0] }}
                 transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
               >
-                <img src={LOGO_URL} alt="شعار منصة مهارات التعليمية" className="h-8 sm:h-10 w-auto" />
+                <img src={LOGO_URL} alt="شعار المنصة" className="h-10 w-auto" />
               </motion.div>
-              <div>
-                <h1 className="text-lg sm:text-xl font-bold gradient-text">لوحة تحكم المعلم</h1>
-                {userData && (
-                  <div className="flex items-center gap-1 text-gray-600 text-xs">
-                    <User className="w-3 h-3" />
-                    <span className="font-semibold text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 to-pink-500">
-                      {userData.name}
-                    </span>
+
+              {/* Teacher Animated Avatar */}
+              <div className="flex items-center gap-3">
+                <motion.div
+                  initial={{ scale: 0, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ type: "spring", stiffness: 200, damping: 15 }}
+                  className="relative h-12 w-12"
+                >
+                  {/* Orbiting Ring */}
+                  <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
+                    className="absolute -inset-1 rounded-full border-2 border-dashed border-indigo-400/40"
+                  />
+
+                  {/* Glow Pulse */}
+                  <motion.div
+                    animate={{ scale: [1, 1.15, 1], opacity: [0.3, 0.6, 0.3] }}
+                    transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+                    className="absolute inset-0 bg-indigo-500 rounded-full blur-md"
+                  />
+
+                  {/* Main Avatar Container */}
+                  <div className="relative h-full w-full rounded-full bg-gradient-to-br from-indigo-600 via-purple-700 to-amber-500 p-0.5 shadow-xl overflow-hidden border-2 border-white/20 flex items-center justify-center">
+                    <User className="w-6 h-6 text-white" />
                   </div>
-                )}
+
+                  {/* Online Indicator with Pulse */}
+                  <div className="absolute bottom-0 right-0 w-4 h-4 bg-green-500 border-2 border-white rounded-full z-10">
+                    <motion.div
+                      animate={{ scale: [1, 1.5, 1], opacity: [1, 0, 1] }}
+                      transition={{ duration: 2, repeat: Infinity }}
+                      className="absolute inset-0 bg-green-400 rounded-full"
+                    />
+                  </div>
+                </motion.div>
+
+                <div className="text-right">
+                  <h1 className="text-xl font-bold gradient-text leading-tight">لوحة تحكم المعلم</h1>
+                  {userData && (
+                    <div className="flex flex-col text-xs mt-0.5">
+                      <span className="font-bold text-gray-800 text-sm">
+                        {userData.name}
+                      </span>
+                      <span className="text-purple-600 font-medium opacity-80">
+                        المشرف العام
+                      </span>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -366,7 +458,7 @@ const TeacherDashboard = memo(() => {
                 className="flex-1 flex flex-col items-center justify-center gap-1 py-2 text-xs sm:text-sm min-w-0"
               >
                 <BarChart3 className="w-3 h-3 sm:w-4 sm:h-4" />
-                <span className="truncate">التحليلات</span>
+                <span className="truncate">إحصائيات</span>
               </TabsTrigger>
               <TabsTrigger
                 value="meeting"
@@ -480,6 +572,9 @@ const TeacherDashboard = memo(() => {
                 students={students}
                 lessons={lessons}
                 studentProgress={studentProgress}
+                videoProgress={videoProgress}
+                quizProgress={quizProgress}
+                analyticsEvents={analyticsEvents}
               />
             </Suspense>
           </TabsContent>

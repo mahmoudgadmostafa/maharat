@@ -1,18 +1,75 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { trackEvent, EVENT_TYPES } from '@/lib/analyticsService';
-import { BookOpen, ExternalLink, Eye, EyeOff } from 'lucide-react';
+import { BookOpen, ExternalLink, Eye, EyeOff, CheckSquare, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/contexts/AuthContext';
+import { useMotivation } from '@/contexts/MotivationContext';
+import { MOTIVATION_TYPES } from '@/lib/motivationMessages';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
-const QuestionsAccess = ({ questionsUrl, lessonId }) => {
+const QuestionsAccess = ({ questionsUrl, lessonId, isVisible = true }) => {
+
+  // 🔥 فلتر الإظهار والإخفاء — لو مخفي يرجع ولا شيء
+  if (!isVisible) {
+    return null;
+  }
+
   const { currentUser } = useAuth();
   const studentId = currentUser?.uid;
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isUnlocked, setIsUnlocked] = useState(false);
+  const [isCompleted, setIsCompleted] = useState(false);
+  const { showMotivation } = useMotivation();
+
+  // Save progress to Firestore
+  const saveProgress = useCallback(async (unlocked, completed) => {
+    if (!studentId || !lessonId) return;
+    try {
+      const progressRef = doc(db, 'contentProgress', `${studentId}_${lessonId}_quiz`);
+      await setDoc(progressRef, {
+        isUnlocked: unlocked,
+        isCompleted: completed,
+        lastUpdated: new Date().toISOString()
+      }, { merge: true });
+    } catch (error) {
+      console.error("Error saving Quiz progress:", error);
+    }
+  }, [studentId, lessonId]);
+
+  // Load progress from Firestore
+  useEffect(() => {
+    const loadProgress = async () => {
+      if (!studentId || !lessonId) return;
+
+      // 🔄 Reset local state immediately on lesson change to prevent leakage
+      setIsUnlocked(false);
+      setIsCompleted(false);
+      setIsExpanded(false);
+
+      try {
+        const progressRef = doc(db, 'contentProgress', `${studentId}_${lessonId}_quiz`);
+        const snap = await getDoc(progressRef);
+        if (snap.exists()) {
+          const data = snap.data();
+          setIsUnlocked(data.isUnlocked || false);
+          setIsCompleted(data.isCompleted || false);
+        }
+      } catch (error) {
+        console.error("Error loading Quiz progress:", error);
+      }
+    };
+    loadProgress();
+  }, [studentId, lessonId]);
 
   const handleQuestionsAccess = () => {
+    if (!isUnlocked) {
+      setIsUnlocked(true);
+      saveProgress(true, isCompleted);
+    }
     if (studentId && lessonId) {
-      trackEvent(studentId, EVENT_TYPES.QUESTIONS_ACCESSED, lessonId, null, {
+      trackEvent(EVENT_TYPES.QUESTIONS_ACCESSED, studentId, lessonId, {
         questionsUrl,
         timestamp: new Date().toISOString()
       });
@@ -24,7 +81,11 @@ const QuestionsAccess = ({ questionsUrl, lessonId }) => {
 
   const handleToggleExpanded = () => {
     if (!isExpanded && studentId && lessonId) {
-      trackEvent(studentId, EVENT_TYPES.QUESTIONS_ACCESSED, lessonId, null, {
+      if (!isUnlocked) {
+        setIsUnlocked(true);
+        saveProgress(true, isCompleted);
+      }
+      trackEvent(EVENT_TYPES.QUESTIONS_ACCESSED, studentId, lessonId, {
         questionsUrl,
         timestamp: new Date().toISOString(),
         viewType: 'inline'
@@ -95,10 +156,33 @@ const QuestionsAccess = ({ questionsUrl, lessonId }) => {
               <ExternalLink className="w-4 h-4 ml-1" />
               فتح خارجي
             </Button>
+            <Button
+              variant={isCompleted ? "success" : "default"}
+              size="sm"
+              onClick={() => {
+                setIsCompleted(true);
+                saveProgress(isUnlocked, true);
+                showMotivation(MOTIVATION_TYPES.QUIZ_COMPLETE);
+              }}
+              disabled={!isUnlocked || isCompleted}
+              className={`${isCompleted ? 'bg-green-600 hover:bg-green-700' : 'bg-blue-600 hover:bg-blue-700'} text-white shadow-sm transition-all duration-300 disabled:opacity-50 disabled:grayscale`}
+            >
+              {isCompleted ? (
+                <>
+                  <CheckCircle className="w-4 h-4 ml-1" />
+                  أنهيت الاختبار ✓
+                </>
+              ) : (
+                <>
+                  <CheckSquare className="w-4 h-4 ml-1" />
+                  أنهيت الاختبار
+                </>
+              )}
+            </Button>
           </div>
         </CardTitle>
       </CardHeader>
-      
+
       {isExpanded && (
         <CardContent className="pt-0">
           <div className="border rounded-lg overflow-hidden bg-white" style={{ height: '600px' }}>
@@ -117,7 +201,7 @@ const QuestionsAccess = ({ questionsUrl, lessonId }) => {
           </p>
         </CardContent>
       )}
-      
+
       {!isExpanded && (
         <CardContent className="pt-0">
           <p className="text-sm text-muted-foreground text-center">
@@ -130,4 +214,3 @@ const QuestionsAccess = ({ questionsUrl, lessonId }) => {
 };
 
 export default QuestionsAccess;
-

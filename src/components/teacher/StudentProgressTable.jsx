@@ -32,122 +32,81 @@ import {
   Clock,
   CheckCircle,
   XCircle,
-  AlertTriangle
+  AlertTriangle,
+  Award
 } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
-const StudentProgressTable = ({ students = [], lessons = [], studentProgress = {} }) => {
+const StudentProgressTable = ({
+  students = [],
+  lessons = [],
+  studentProgress = {},
+  videoProgress = {},
+  quizProgress = {}
+}) => {
   const [filteredData, setFilteredData] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterStatus, setFilterStatus] = useState('all');
+  const [filterGroup, setFilterGroup] = useState('all');
   const [sortBy, setSortBy] = useState('name');
   const [sortOrder, setSortOrder] = useState('asc');
   const [loading, setLoading] = useState(false);
-  const [analyticsEvents, setAnalyticsEvents] = useState([]);
 
-  // جمع بيانات الأحداث من Firebase
-  useEffect(() => {
-    const fetchAnalyticsEvents = async () => {
-      try {
-        setLoading(true);
-        const eventsRef = collection(db, 'analyticsEvents');
-        const eventsSnapshot = await getDocs(eventsRef);
-        const events = eventsSnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
-        setAnalyticsEvents(events);
-      } catch (error) {
-        console.error('Error fetching analytics events:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
 
-    fetchAnalyticsEvents();
-  }, []);
 
   // حساب إحصائيات تفصيلية لكل طالب
   const calculateDetailedProgress = () => {
     return students.map(student => {
       const progress = studentProgress[student.id] || { completedLessons: [] };
-      const studentEvents = analyticsEvents.filter(event => event.studentId === student.id);
-      
+
       const allLessonIds = lessons.map(lesson => lesson.id);
       const totalLessonsCount = allLessonIds.length;
 
       // حساب إحصائيات الدروس
       const completedLessons = progress.completedLessons?.length || 0;
       const progressPercentage = totalLessonsCount > 0 ? (completedLessons / totalLessonsCount) * 100 : 0;
-      
-      // حساب إحصائيات الوسائط من الأحداث المسجلة
-      const videoEvents = studentEvents.filter(event => 
-        event.eventType === 'video_completed' || event.eventType === 'video_watched'
-      );
-      const pdfEvents = studentEvents.filter(event => 
-        event.eventType === 'pdf_opened' || event.eventType === 'pdf_viewed'
-      );
-      const questionsEvents = studentEvents.filter(event => 
-        event.eventType === 'questions_accessed' || event.eventType === 'quiz_started'
-      );
-      
-      // حساب عدد الدروس الفريدة التي تم التفاعل معها في كل نوع وسائط
-      const uniqueVideoLessons = new Set(videoEvents.map(event => event.lessonId)).size;
-      const uniquePdfLessons = new Set(pdfEvents.map(event => event.lessonId)).size;
-      const uniqueQuestionsLessons = new Set(questionsEvents.map(event => event.lessonId)).size;
-      
-      // إذا لم توجد أحداث، استخدم تقدير بناءً على الدروس المكتملة
-      const videoCompletedLessonsCount = uniqueVideoLessons > 0 ? uniqueVideoLessons : Math.floor(completedLessons * 0.8);
-      const pdfOpenedLessonsCount = uniquePdfLessons > 0 ? uniquePdfLessons : Math.floor(completedLessons * 0.9);
-      const questionsAccessedLessonsCount = uniqueQuestionsLessons > 0 ? uniqueQuestionsLessons : Math.floor(completedLessons * 0.7);
-      
+
+      // حساب تقدم الوسائط بدقة من الخرائط الممررة
+      let videoCompletedLessonsCount = 0;
+      let questionsAccessedLessonsCount = 0;
+      let totalStudentScores = 0;
+      let studentScoreCount = 0;
+
+      lessons.forEach(lesson => {
+        // التحقق من الفيديو
+        if (videoProgress[`${student.id}_${lesson.id}`]?.isCompleted) {
+          videoCompletedLessonsCount++;
+        }
+
+        // التحقق من الأسئلة/الاختبار
+        const quizData = quizProgress[`${student.id}_${lesson.id}_quiz`];
+        if (quizData) {
+          if (quizData.isCompleted) questionsAccessedLessonsCount++;
+          if (quizData.score !== undefined) {
+            totalStudentScores += quizData.score;
+            studentScoreCount++;
+          }
+        }
+      });
+
+      // افتراض فتح الـ PDF بناءً على الدروس المكتملة
+      const pdfOpenedLessonsCount = Math.floor(completedLessons * 0.9);
+
       const videoCompletionRate = totalLessonsCount > 0 ? (videoCompletedLessonsCount / totalLessonsCount) * 100 : 0;
       const pdfOpenRate = totalLessonsCount > 0 ? (pdfOpenedLessonsCount / totalLessonsCount) * 100 : 0;
       const questionsAccessRate = totalLessonsCount > 0 ? (questionsAccessedLessonsCount / totalLessonsCount) * 100 : 0;
-      
-      // حساب الدرجات من الأحداث أو من progress object
-      const scoreEvents = studentEvents.filter(event => 
-        event.eventType === 'quiz_completed' && event.additionalData?.score !== undefined
-      );
-      const eventScores = scoreEvents.map(event => event.additionalData.score);
-      
-      // البحث عن الدرجات في progress object كبديل
-      const progressScores = Object.values(progress)
-        .filter(p => typeof p === 'object' && p !== null && p.score !== undefined && p.score !== null)
-        .map(p => p.score);
-      
-      // دمج الدرجات من المصدرين
-      const allScores = [...eventScores, ...progressScores];
-      const studentScores = allScores.length > 0 ? allScores : [];
-      
-      const averageScore = studentScores.length > 0 
-        ? studentScores.reduce((sum, score) => sum + score, 0) / studentScores.length 
+
+      const averageScore = studentScoreCount > 0
+        ? totalStudentScores / studentScoreCount
         : 0;
-      
-      // حساب الوقت المقضي (تقديري)
-      const totalTimeSpent = studentEvents.reduce((total, event) => {
-        if (event.additionalData && event.additionalData.timeSpent) {
-          return total + event.additionalData.timeSpent;
-        }
-        return total;
-      }, 0);
-      
-      // تحديد آخر نشاط
-      const lastActivity = studentEvents.length > 0 
-        ? new Date(Math.max(...studentEvents.map(event => {
-            if (event.timestamp && event.timestamp.toDate) {
-              return event.timestamp.toDate().getTime();
-            } else if (event.timestamp) {
-              return new Date(event.timestamp).getTime();
-            } else if (event.createdAt) {
-              return new Date(event.createdAt).getTime();
-            }
-            return 0;
-          })))
-        : null;
-      
+
+      // حساب الوقت المقضي (تقديري - لا نملك الأحداث حالياً)
+      const totalTimeSpent = completedLessons * 15; // افتراض 15 دقيقة لكل درس
+
+      // تحديد آخر نشاط (تقديري من بيانات التقدم)
+      const lastActivity = progress.lastUpdated || null;
+
       // تحديد الحالة
       let status = 'غير نشط';
       if (completedLessons === 0) {
@@ -161,7 +120,7 @@ const StudentProgressTable = ({ students = [], lessons = [], studentProgress = {
       } else {
         status = 'ممتاز';
       }
-      
+
       return {
         id: student.id,
         name: student.name || 'غير محدد',
@@ -176,13 +135,13 @@ const StudentProgressTable = ({ students = [], lessons = [], studentProgress = {
         pdfOpenRate: Math.round(pdfOpenRate * 100) / 100,
         questionsAccessedLessons: questionsAccessedLessonsCount,
         questionsAccessRate: Math.round(questionsAccessRate * 100) / 100,
-        totalTimeSpent: Math.round(totalTimeSpent / 60), // بالدقائق
-        lastActivity: lastActivity ? lastActivity.toLocaleDateString('ar-EG') : 'لا يوجد',
+        badgesCount: completedLessons,
         status,
         statusColor: status === 'ممتاز' ? 'bg-green-100 text-green-800' :
-                    status === 'جيد' ? 'bg-blue-100 text-blue-800' :
-                    status === 'متوسط' ? 'bg-yellow-100 text-yellow-800' :
-                    status === 'متعثر' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800'
+          status === 'جيد' ? 'bg-blue-100 text-blue-800' :
+            status === 'متوسط' ? 'bg-yellow-100 text-yellow-800' :
+              status === 'متعثر' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800',
+        group: student.group || 'بدون مجموعة'
       };
     });
   };
@@ -190,39 +149,39 @@ const StudentProgressTable = ({ students = [], lessons = [], studentProgress = {
   // تطبيق الفلاتر والبحث
   useEffect(() => {
     let data = calculateDetailedProgress();
-    
+
     // تطبيق البحث
     if (searchTerm) {
-      data = data.filter(student => 
+      data = data.filter(student =>
         student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         student.email.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
-    
-    // تطبيق فلتر الحالة
-    if (filterStatus !== 'all') {
-      data = data.filter(student => student.status === filterStatus);
+
+    // تطبيق فلتر المجموعة
+    if (filterGroup !== 'all') {
+      data = data.filter(student => student.group === filterGroup);
     }
-    
+
     // تطبيق الترتيب
     data.sort((a, b) => {
       let aValue = a[sortBy];
       let bValue = b[sortBy];
-      
+
       if (typeof aValue === 'string') {
         aValue = aValue.toLowerCase();
         bValue = bValue.toLowerCase();
       }
-      
+
       if (sortOrder === 'asc') {
         return aValue > bValue ? 1 : -1;
       } else {
         return aValue < bValue ? 1 : -1;
       }
     });
-    
+
     setFilteredData(data);
-  }, [students, lessons, studentProgress, analyticsEvents, searchTerm, filterStatus, sortBy, sortOrder]);
+  }, [students, lessons, studentProgress, videoProgress, quizProgress, searchTerm, filterGroup, sortBy, sortOrder]);
 
   // تصدير البيانات إلى Excel
   const exportToExcel = async () => {
@@ -246,23 +205,24 @@ const StudentProgressTable = ({ students = [], lessons = [], studentProgress = {
             student.averageScore,
             student.videoCompletionRate,
             student.pdfOpenRate,
-            student.questionsAccessRate
+            student.questionsAccessRate,
+            student.badgesCount
           ].join(','))
         ].join('\n');
-        
+
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement('a');
         link.href = URL.createObjectURL(blob);
         link.download = `student-progress-${new Date().toISOString().split('T')[0]}.csv`;
         link.click();
-        
+
         toast({
           title: 'تم تصدير البيانات',
           description: 'تم إنشاء ملف CSV بنجاح',
         });
         return;
       }
-      
+
       // إعداد البيانات للتصدير
       const detailedData = calculateDetailedProgress();
       const analyticsData = {
@@ -275,9 +235,9 @@ const StudentProgressTable = ({ students = [], lessons = [], studentProgress = {
         overallPdfOpenRate: detailedData.reduce((sum, s) => sum + s.pdfOpenRate, 0) / detailedData.length || 0,
         overallQuestionsAccessRate: detailedData.reduce((sum, s) => sum + s.questionsAccessRate, 0) / detailedData.length || 0
       };
-      
+
       const result = exportFunction(students, lessons, studentProgress, analyticsData);
-      
+
       if (result && result.success) {
         toast({
           title: 'تم تصدير البيانات بنجاح',
@@ -343,7 +303,7 @@ const StudentProgressTable = ({ students = [], lessons = [], studentProgress = {
             </Button>
           </div>
         </CardHeader>
-        
+
         <CardContent>
           {/* أدوات البحث والفلترة */}
           <div className="flex flex-col sm:flex-row gap-4 mb-6">
@@ -356,22 +316,21 @@ const StudentProgressTable = ({ students = [], lessons = [], studentProgress = {
                 className="pl-10"
               />
             </div>
-            
-            <Select value={filterStatus} onValueChange={setFilterStatus}>
+
+            <Select value={filterGroup} onValueChange={setFilterGroup}>
               <SelectTrigger className="w-full sm:w-48">
                 <Filter className="w-4 h-4 mr-2" />
-                <SelectValue placeholder="فلترة حسب الحالة" />
+                <SelectValue placeholder="تصفية حسب المجموعة" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">جميع الحالات</SelectItem>
-                <SelectItem value="ممتاز">ممتاز</SelectItem>
-                <SelectItem value="جيد">جيد</SelectItem>
-                <SelectItem value="متوسط">متوسط</SelectItem>
-                <SelectItem value="متعثر">متعثر</SelectItem>
-                <SelectItem value="لم يبدأ">لم يبدأ</SelectItem>
+                <SelectItem value="all">جميع المجموعات</SelectItem>
+                {[...new Set(students.map(s => s.group).filter(Boolean))].map(group => (
+                  <SelectItem key={group} value={String(group)}>{group}</SelectItem>
+                ))}
+                {students.some(s => !s.group) && <SelectItem value="بدون مجموعة">بدون مجموعة</SelectItem>}
               </SelectContent>
             </Select>
-            
+
             <Select value={sortBy} onValueChange={setSortBy}>
               <SelectTrigger className="w-full sm:w-48">
                 <SelectValue placeholder="ترتيب حسب" />
@@ -381,10 +340,10 @@ const StudentProgressTable = ({ students = [], lessons = [], studentProgress = {
                 <SelectItem value="progressPercentage">نسبة التقدم</SelectItem>
                 <SelectItem value="averageScore">متوسط الدرجات</SelectItem>
                 <SelectItem value="videoCompletionRate">إكمال الفيديو</SelectItem>
-                <SelectItem value="lastActivity">آخر نشاط</SelectItem>
+                <SelectItem value="badgesCount">عدد الأوسمة</SelectItem>
               </SelectContent>
             </Select>
-            
+
             <Button
               variant="outline"
               onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
@@ -421,8 +380,7 @@ const StudentProgressTable = ({ students = [], lessons = [], studentProgress = {
                       الأسئلة
                     </div>
                   </TableHead>
-                  <TableHead className="text-right border border-gray-300 p-3 font-semibold">الوقت المقضي</TableHead>
-                  <TableHead className="text-right border border-gray-300 p-3 font-semibold">آخر نشاط</TableHead>
+                  <TableHead className="text-center border border-gray-300 p-3 font-semibold">عدد الأوسمة</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -512,18 +470,18 @@ const StudentProgressTable = ({ students = [], lessons = [], studentProgress = {
                     </TableCell>
                     <TableCell className="border border-gray-300 p-3">
                       <div className="text-center">
-                        <div className="font-medium text-lg">{student.totalTimeSpent} دقيقة</div>
-                        <div className="text-sm text-gray-500">إجمالي</div>
+                        <div className="font-bold text-xl text-yellow-600 flex items-center justify-center gap-1">
+                          <Award className="w-5 h-5" />
+                          {student.badgesCount}
+                        </div>
+                        <div className="text-xs text-gray-500">وسام مكتسب</div>
                       </div>
-                    </TableCell>
-                    <TableCell className="border border-gray-300 p-3">
-                      <div className="text-sm text-gray-700">{student.lastActivity}</div>
                     </TableCell>
                   </motion.tr>
                 ))}
                 {filteredData.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={9} className="text-center py-8 text-gray-500">
+                    <TableCell colSpan={8} className="text-center py-8 text-gray-500">
                       لا توجد بيانات لعرضها.
                     </TableCell>
                   </TableRow>

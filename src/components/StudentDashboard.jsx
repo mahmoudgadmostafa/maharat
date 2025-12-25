@@ -10,6 +10,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Award, ExternalLink } from 'lucide-react';
 import LoadingSpinner from '@/components/LoadingSpinner';
+import { useMotivation } from '@/contexts/MotivationContext';
+import { ACHIEVEMENT_EMOJIS } from '@/lib/motivationMessages';
 
 // Lazy loading للمكونات الفرعية
 const StudentHeader = lazy(() => import('@/components/student/StudentHeader'));
@@ -20,6 +22,7 @@ const StudentLessonDetails = lazy(() => import('@/components/student/StudentLess
 const StudentWelcomeMessage = lazy(() => import('@/components/student/StudentWelcomeMessage'));
 const StudentMessaging = lazy(() => import('@/components/student/StudentMessaging').then(module => ({ default: module.StudentMessaging })));
 const ExamAccess = lazy(() => import('@/components/ExamAccess'));
+const StudentAchievements = lazy(() => import('./student/StudentAchievements'));
 
 const StudentDashboard = memo(() => {
   const { logout, currentUser } = useAuth();
@@ -37,6 +40,7 @@ const StudentDashboard = memo(() => {
   });
   const [modalState, setModalState] = useState({ isOpen: false, url: "", title: "", resourceType: "" });
   const [showMessaging, setShowMessaging] = useState(false);
+  const { showMotivation } = useMotivation();
 
   const fetchLessonsAndUserData = useCallback(async () => {
     if (!currentUser) return { userData: null, lessonsData: [] };
@@ -132,6 +136,11 @@ const StudentDashboard = memo(() => {
 
     fetchLessonsAndUserData().then(({ userData: fetchedUserData }) => {
       if (isMounted) {
+        if (!fetchedUserData) {
+          // محاولة أخيرة إذا فشل الجلب الأولي
+          setLoading(false);
+          return;
+        }
         const unsubscribers = setupListeners(fetchedUserData);
         setLoading(false);
 
@@ -168,6 +177,14 @@ const StudentDashboard = memo(() => {
       toast({
         title: "رائع!",
         description: `تم تحديد الدرس "${selectedLesson.title}" كمكتمل.`,
+      });
+
+      // إظهار الإيموشن الاحترافي الخاص بالدرس
+      const lessonIndex = lessons.findIndex(l => l.id === lessonId);
+      const achievement = ACHIEVEMENT_EMOJIS[lessonIndex % ACHIEVEMENT_EMOJIS.length];
+      showMotivation({
+        emoji: achievement.emoji,
+        text: `لقد حصلت على وسام: ${achievement.name}! 🎉`
       });
     } catch (error) {
       console.error("Error marking lesson as complete:", error);
@@ -277,12 +294,21 @@ const StudentDashboard = memo(() => {
               />
             </Suspense>
 
-            <div className="grid lg:grid-cols-3 gap-8">
+            <Suspense fallback={<LoadingSpinner />}>
+              <StudentAchievements
+                lessons={lessons}
+                completedLessonIds={studentProgress.completedLessons}
+              />
+            </Suspense>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8 items-start">
+              {/* Sidebar: Lesson Selector & Quick Access (AI/Meetings) */}
+              {/* Top on mobile (order-1), Sidebar on Desktop */}
               <motion.div
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 }}
-                className="lg:col-span-1 space-y-6"
+                className="lg:col-span-1 order-1 space-y-6"
               >
                 <Suspense fallback={<LoadingSpinner />}>
                   <StudentLessonSelector
@@ -292,22 +318,24 @@ const StudentDashboard = memo(() => {
                     studentProgress={studentProgress}
                   />
                 </Suspense>
+
                 <Suspense fallback={<LoadingSpinner />}>
                   <StudentQuickAccess
                     platformSettings={{
                       ...platformSettings,
-                      studentAiToolsList: filteredStudentAiTools // تمرير القائمة المفلترة
+                      studentAiToolsList: filteredStudentAiTools
                     }}
                     onOpenResourceModal={openResourceModal}
                   />
                 </Suspense>
               </motion.div>
 
+              {/* Main content (Video/Lessons) - Middle on mobile (order-2), Main area on Desktop */}
               <motion.div
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.2 }}
-                className="lg:col-span-2"
+                className="lg:col-span-2 lg:row-span-2 order-2"
               >
                 <div className="space-y-6">
                   {selectedLesson ? (

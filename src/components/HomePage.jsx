@@ -129,7 +129,7 @@ case 'about':
               <div className="mt-6">
                 <img 
                   src="/images/2.jpg" 
-                  alt="الباحث  " 
+                  alt="الباحث ودليل الاستخدام" 
                   className="w-full h-auto rounded-lg shadow-lg border-4 border-white hover:shadow-xl transition-shadow duration-300"
                 />
                 <p className="mt-3 text-center text-gray-600 font-semibold">الباحث</p>
@@ -258,7 +258,10 @@ case 'about':
             </a>
           </div>
 
-          
+          <div className="bg-blue-50 p-4 rounded-lg">
+            <p className="text-blue-800 font-semibold">ساعات العمل</p>
+            <p className="text-blue-700">السبت - الخميس: 9:00 ص - 5:00 م</p>
+          </div>
         </div>
       </motion.div>
     </div>

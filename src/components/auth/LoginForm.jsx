@@ -4,10 +4,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { signInWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
+import { useAuth } from '@/contexts/AuthContext';
 
-const LoginForm = () => {
+const LoginForm = (props) => {
   const [formData, setFormData] = useState({
     identifier: '',
     password: ''
@@ -22,7 +21,7 @@ const LoginForm = () => {
       try {
         const settingsRef = doc(db, "platformSettings", "main");
         const settingsSnap = await getDoc(settingsRef);
-        
+
         if (settingsSnap.exists()) {
           setEmailDomain(settingsSnap.data()?.emailDomain || '@maharat.eg');
         } else {
@@ -36,6 +35,8 @@ const LoginForm = () => {
 
     fetchEmailDomain();
   }, []);
+
+  const { login } = useAuth();
 
   const handleChange = (e) => {
     setFormData({
@@ -54,25 +55,27 @@ const LoginForm = () => {
         throw new Error('الرجاء إدخال جميع البيانات المطلوبة');
       }
 
-      // تحديد البريد الإلكتروني النهائي
+      // تحديد البريد الإلكتروني النهائي (دعم الكود والبريد)
       const finalEmail = formData.identifier.includes('@')
         ? formData.identifier
         : `${formData.identifier}${emailDomain}`;
 
-      // تسجيل الدخول باستخدام Firebase Auth
-      await signInWithEmailAndPassword(auth, finalEmail, formData.password);
-      
-      // يمكنك إضافة توجيه هنا إذا لزم الأمر
-      // router.push('/dashboard');
+      // استخدام وظيفة login المركزية من AuthContext
+      await login(finalEmail, formData.password);
+
+      // تنفيذ onSubmit إذا تم تمريرها (للتوافق مع HomePage)
+      if (typeof props.onSubmit === 'function') {
+        props.onSubmit({ email: finalEmail, password: formData.password });
+      }
 
     } catch (error) {
       console.error('فشل تسجيل الدخول:', error);
       setError(
-        error.message.includes('auth/user-not-found') ? 
-        'الحساب غير موجود' :
-        error.message.includes('auth/wrong-password') ?
-        'كلمة المرور غير صحيحة' :
-        'حدث خطأ أثناء تسجيل الدخول'
+        error.code === 'auth/user-not-found' || error.message.includes('not-found') ?
+          'الحساب غير موجود' :
+          error.code === 'auth/wrong-password' || error.message.includes('wrong-password') ?
+            'كلمة المرور غير صحيحة' :
+            'حدث خطأ أثناء تسجيل الدخول. يرجى التأكد من الكود وكلمة المرور'
       );
     } finally {
       setIsLoading(false);
@@ -111,8 +114,8 @@ const LoginForm = () => {
           required
         />
       </div>
-      <Button 
-        type="submit" 
+      <Button
+        type="submit"
         className="w-full"
         disabled={isLoading || !emailDomain}
       >

@@ -7,13 +7,16 @@ import VideoPlayer from '@/components/VideoPlayer';
 import PDFViewer from '@/components/PDFViewer';
 import QuestionsAccess from '@/components/QuestionsAccess';
 import ExamAccess from '@/components/ExamAccess';
+import { useMotivation } from '@/contexts/MotivationContext';
+import { MOTIVATION_TYPES } from '@/lib/motivationMessages';
 
-const StudentLessonDetails = ({ 
-  lesson, 
-  studentProgress, 
+const StudentLessonDetails = ({
+  lesson,
+  studentProgress,
   onMarkLessonComplete,
   platformSettings
 }) => {
+  const { showMotivation } = useMotivation();
   const getYouTubeEmbedUrl = (url) => {
     if (!url) return null;
     let videoId;
@@ -27,6 +30,11 @@ const StudentLessonDetails = ({
       videoId = url.split('shorts/')[1].split('?')[0];
     }
     return videoId ? `https://www.youtube.com/embed/${videoId}` : null;
+  };
+
+  const handleMarkComplete = (lessonId) => {
+    onMarkLessonComplete(lessonId);
+    showMotivation(MOTIVATION_TYPES.LESSON_COMPLETE);
   };
 
   return (
@@ -67,7 +75,7 @@ const StudentLessonDetails = ({
         <CardFooter className="bg-gray-50/50">
           {!studentProgress.completedLessons.includes(lesson.id) ? (
             <Button
-              onClick={() => onMarkLessonComplete(lesson.id)}
+              onClick={() => handleMarkComplete(lesson.id)}
               className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700"
             >
               <CheckSquare className="w-4 h-4 ml-2" />

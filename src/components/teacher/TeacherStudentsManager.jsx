@@ -23,7 +23,7 @@ import { Progress } from '@/components/ui/progress';
 import * as XLSX from 'xlsx';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
-export const TeacherStudentsManager = ({ students, onStudentsUpdate }) => {
+export const TeacherStudentsManager = ({ students, onStudentsUpdate, lessons, studentProgress = {} }) => {
   const { currentUser } = useAuth();
 
   const [manageStudentOpen, setManageStudentOpen] = useState(false);
@@ -41,7 +41,7 @@ export const TeacherStudentsManager = ({ students, onStudentsUpdate }) => {
         try {
           const settingsRef = doc(db, "platformSettings", "main");
           const settingsSnap = await getDoc(settingsRef);
-          
+
           if (!settingsSnap.exists()) {
             throw new Error("Platform settings not found. Please ensure 'platformSettings/main' document exists in Firestore.");
           }
@@ -52,7 +52,7 @@ export const TeacherStudentsManager = ({ students, onStudentsUpdate }) => {
 
           const q = query(collection(db, 'users'), where('role', '==', 'student'), orderBy('code', 'desc'), limit(1));
           const snapshot = await getDocs(q);
-          
+
           let newCode = startingCode;
           if (!snapshot.empty) {
             const lastStudentCode = parseInt(snapshot.docs[0]?.data()?.code);
@@ -62,7 +62,7 @@ export const TeacherStudentsManager = ({ students, onStudentsUpdate }) => {
               newCode = startingCode;
             }
           }
-          
+
           const generatedEmail = `${newCode}${emailDomain}`;
 
           setStudentData(prev => ({
@@ -121,42 +121,20 @@ export const TeacherStudentsManager = ({ students, onStudentsUpdate }) => {
   }, [chatModalOpen, currentTargetUser, allTeacherMessages]);
 
   useEffect(() => {
-    const fetchStudentProgress = async () => {
-      try {
-        const lessonsSnapshot = await getDocs(collection(db, 'lessons'));
-        const totalLessons = lessonsSnapshot.size;
+    const totalLessons = lessons?.length || 0;
+    const updatedStudents = students.map((student) => {
+      const progress = studentProgress[student.id] || { completedLessons: [] };
+      const completedLessonsCount = progress.completedLessons?.length || 0;
 
-        const updatedStudents = await Promise.all(
-          students.map(async (student) => {
-            const progressDocRef = doc(db, 'studentProgress', student.id);
-            const progressSnap = await getDoc(progressDocRef);
+      return {
+        ...student,
+        completedLessonsCount,
+        totalLessons,
+      };
+    });
 
-            let completedLessonsCount = 0;
-            if (progressSnap.exists()) {
-              const data = progressSnap.data();
-              if (Array.isArray(data.completedLessons)) {
-                completedLessonsCount = data.completedLessons.length;
-              }
-            }
-
-            return {
-              ...student,
-              completedLessonsCount,
-              totalLessons,
-            };
-          })
-        );
-
-        setProcessedStudents(updatedStudents);
-      } catch (err) {
-        console.error('خطأ أثناء تحميل بيانات التقدم:', err);
-      }
-    };
-
-    if (students.length > 0) {
-      fetchStudentProgress();
-    }
-  }, [students]);
+    setProcessedStudents(updatedStudents);
+  }, [students, lessons, studentProgress]);
 
   const handleManageStudent = async (e) => {
     e.preventDefault();
@@ -264,7 +242,7 @@ export const TeacherStudentsManager = ({ students, onStudentsUpdate }) => {
       const requiredColumns = ['الاسم'];
       const firstRow = jsonData[0];
       const missingColumns = requiredColumns.filter(col => !(col in firstRow));
-      
+
       if (missingColumns.length > 0) {
         throw new Error(`الأعمدة المطلوبة مفقودة: ${missingColumns.join(', ')}`);
       }
@@ -272,7 +250,7 @@ export const TeacherStudentsManager = ({ students, onStudentsUpdate }) => {
       // الحصول على إعدادات المنصة
       const settingsRef = doc(db, "platformSettings", "main");
       const settingsSnap = await getDoc(settingsRef);
-      
+
       if (!settingsSnap.exists()) {
         throw new Error("إعدادات المنصة غير موجودة");
       }
@@ -284,7 +262,7 @@ export const TeacherStudentsManager = ({ students, onStudentsUpdate }) => {
       // الحصول على آخر كود مستخدم
       const q = query(collection(db, 'users'), where('role', '==', 'student'), orderBy('code', 'desc'), limit(1));
       const snapshot = await getDocs(q);
-      
+
       let currentCode = startingCode;
       if (!snapshot.empty) {
         const lastStudentCode = parseInt(snapshot.docs[0]?.data()?.code);
@@ -351,27 +329,27 @@ export const TeacherStudentsManager = ({ students, onStudentsUpdate }) => {
       }
 
       setUploadResults(results);
-      
+
       if (results.success.length > 0) {
-        toast({ 
+        toast({
           title: `تم إضافة ${results.success.length} طالب بنجاح`,
           description: results.errors.length > 0 ? `فشل في إضافة ${results.errors.length} طالب` : undefined
         });
         onStudentsUpdate();
       } else {
-        toast({ 
-          title: 'فشل في إضافة الطلاب', 
+        toast({
+          title: 'فشل في إضافة الطلاب',
           description: 'لم يتم إضافة أي طالب بنجاح',
-          variant: 'destructive' 
+          variant: 'destructive'
         });
       }
 
     } catch (error) {
       console.error('خطأ في رفع الملف:', error);
-      toast({ 
-        title: 'خطأ في رفع الملف', 
+      toast({
+        title: 'خطأ في رفع الملف',
         description: error.message,
-        variant: 'destructive' 
+        variant: 'destructive'
       });
     } finally {
       setIsUploading(false);
@@ -400,10 +378,10 @@ export const TeacherStudentsManager = ({ students, onStudentsUpdate }) => {
     XLSX.utils.book_append_sheet(workbook, worksheet, 'نموذج الطلاب');
 
     XLSX.writeFile(workbook, 'نموذج_إضافة_الطلاب.xlsx');
-    
-    toast({ 
-      title: 'تم تحميل النموذج', 
-      description: 'يمكنك ملء البيانات وإعادة رفع الملف' 
+
+    toast({
+      title: 'تم تحميل النموذج',
+      description: 'يمكنك ملء البيانات وإعادة رفع الملف'
     });
   };
 
@@ -417,10 +395,7 @@ export const TeacherStudentsManager = ({ students, onStudentsUpdate }) => {
         'كلمة المرور': student.password || '',
         'رقم الهاتف': student.phone || '',
         'المجموعة': student.group || 'بدون مجموعة',
-        'تاريخ التسجيل': student.createdAt 
-          ? new Date(student.createdAt.seconds * 1000).toLocaleDateString('ar-EG')
-          : 'غير معروف',
-        'الدروس المكتملة': typeof student.completedLessonsCount === 'number' 
+        'الدروس المكتملة': typeof student.completedLessonsCount === 'number'
           ? `${student.completedLessonsCount} / ${student.totalLessons || 0}`
           : 'لا بيانات',
         'نسبة التقدم': typeof student.completedLessonsCount === 'number' && student.totalLessons > 0
@@ -446,17 +421,17 @@ export const TeacherStudentsManager = ({ students, onStudentsUpdate }) => {
       const fileName = `بيانات_الطلاب_${groupName}_${dateStr}_${timeStr}.xlsx`;
 
       XLSX.writeFile(workbook, fileName);
-      
-      toast({ 
-        title: 'تم تصدير البيانات بنجاح', 
-        description: `تم تحميل ملف ${fileName}` 
+
+      toast({
+        title: 'تم تصدير البيانات بنجاح',
+        description: `تم تحميل ملف ${fileName}`
       });
     } catch (error) {
       console.error('خطأ في تصدير البيانات:', error);
-      toast({ 
-        title: 'خطأ في التصدير', 
+      toast({
+        title: 'خطأ في التصدير',
         description: 'حدث خطأ أثناء تصدير البيانات إلى ملف إكسل',
-        variant: 'destructive' 
+        variant: 'destructive'
       });
     }
   };
@@ -483,10 +458,10 @@ export const TeacherStudentsManager = ({ students, onStudentsUpdate }) => {
       <Card>
         <CardHeader className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <CardTitle className="flex items-center gap-2">
-            <Users className="w-6 h-6 text-blue-600" /> 
+            <Users className="w-6 h-6 text-blue-600" />
             <span className="text-lg md:text-xl">إدارة الطلاب</span>
           </CardTitle>
-          
+
           <div className="w-full md:w-auto flex flex-col md:flex-row gap-2 items-stretch md:items-center">
             {/* Mobile menu button */}
             <div className="md:hidden">
@@ -513,37 +488,37 @@ export const TeacherStudentsManager = ({ students, onStudentsUpdate }) => {
               </DropdownMenu>
             </div>
 
-            <select 
-              value={selectedGroup} 
-              onChange={(e) => setSelectedGroup(e.target.value)} 
+            <select
+              value={selectedGroup}
+              onChange={(e) => setSelectedGroup(e.target.value)}
               className="border px-3 py-2 rounded-md text-sm w-full md:w-auto"
             >
               {groups.map(g => <option key={g} value={g}>{g}</option>)}
             </select>
 
             <div className="hidden md:flex gap-2">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={downloadTemplate}
                 className="bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-300"
               >
-                <FileSpreadsheet className="w-4 h-4 ml-2" /> 
+                <FileSpreadsheet className="w-4 h-4 ml-2" />
                 تحميل النموذج
               </Button>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={() => setBulkUploadModalOpen(true)}
                 className="bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-300"
               >
-                <Upload className="w-4 h-4 ml-2" /> 
+                <Upload className="w-4 h-4 ml-2" />
                 رفع ملف إكسيل
               </Button>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={exportToExcel}
                 className="bg-green-50 hover:bg-green-100 text-green-700 border-green-300"
               >
-                <Download className="w-4 h-4 ml-2" /> 
+                <Download className="w-4 h-4 ml-2" />
                 تصدير إكسل
               </Button>
               <Button variant="outline" onClick={() => setMassMessageModalOpen(true)}>
@@ -554,7 +529,7 @@ export const TeacherStudentsManager = ({ students, onStudentsUpdate }) => {
             <Dialog open={manageStudentOpen} onOpenChange={(v) => { setManageStudentOpen(v); if (!v) setEditingStudent(null); }}>
               <DialogTrigger asChild>
                 <Button className="w-full md:w-auto">
-                  <UserPlus className="w-4 h-4 ml-2" /> 
+                  <UserPlus className="w-4 h-4 ml-2" />
                   {editingStudent ? 'تعديل طالب' : 'إضافة طالب'}
                 </Button>
               </DialogTrigger>
@@ -603,60 +578,54 @@ export const TeacherStudentsManager = ({ students, onStudentsUpdate }) => {
             <p className="text-center py-10 text-gray-500">لا يوجد طلاب في هذه المجموعة</p>
           ) : (
             <div className="overflow-x-auto">
-  <Table className="min-w-full border-collapse border border-gray-300" dir="rtl">
-    <TableHeader>
-      <TableRow className="bg-gray-100 text-gray-700 text-sm border-b border-gray-300">
-        {shouldShowColumn('الاسم') && <TableHead className="font-semibold text-center border-l border-gray-300">الاسم</TableHead>}
-        {shouldShowColumn('البريد الإلكتروني') && <TableHead className="font-semibold text-center border-l border-gray-300">البريد الإلكتروني</TableHead>}
-        {shouldShowColumn('الكود') && <TableHead className="font-semibold text-center border-l border-gray-300">الكود</TableHead>}
-        {shouldShowColumn('الرقم السري') && <TableHead className="font-semibold text-center border-l border-gray-300">الرقم السري</TableHead>}
-        {shouldShowColumn('رقم الهاتف') && <TableHead className="font-semibold text-center border-l border-gray-300">رقم الهاتف</TableHead>}
-        {shouldShowColumn('المجموعة') && <TableHead className="font-semibold text-center border-l border-gray-300">المجموعة</TableHead>}
-        {shouldShowColumn('تاريخ التسجيل') && <TableHead className="font-semibold text-center border-l border-gray-300">تاريخ التسجيل</TableHead>}
-        {shouldShowColumn('التقدّم') && <TableHead className="font-semibold text-center border-l border-gray-300">التقدّم</TableHead>}
-        <TableHead className="font-semibold text-center">خيارات</TableHead>
-      </TableRow>
-    </TableHeader>
-    <TableBody>
-      {filteredStudents.map(student => (
-        <TableRow key={student.id} className="border-b border-gray-200 hover:bg-gray-50">
-          {shouldShowColumn('الاسم') && <TableCell className="border-l border-gray-200 text-right">{student.name}</TableCell>}
-          {shouldShowColumn('البريد الإلكتروني') && <TableCell className="border-l border-gray-200 text-right">{student.email}</TableCell>}
-          {shouldShowColumn('الكود') && <TableCell className="border-l border-gray-200 text-right">{student.code}</TableCell>}
-          {shouldShowColumn('الرقم السري') && <TableCell className="border-l border-gray-200 text-right">{student.password}</TableCell>}
-          {shouldShowColumn('رقم الهاتف') && <TableCell className="border-l border-gray-200 text-right">{student.phone}</TableCell>}
-          {shouldShowColumn('المجموعة') && <TableCell className="border-l border-gray-200 text-right">{student.group || 'بدون مجموعة'}</TableCell>}
-          {shouldShowColumn('تاريخ التسجيل') && (
-            <TableCell className="border-l border-gray-200 text-right">
-              {student.createdAt ? new Date(student.createdAt.seconds * 1000).toLocaleDateString('ar-EG') : 'غير معروف'}
-            </TableCell>
-          )}
-          {shouldShowColumn('التقدّم') && (
-            <TableCell className="border-l border-gray-200">
-              {typeof student.completedLessonsCount === 'number' && student.totalLessons > 0 ? (
-                <div className="flex flex-col gap-1 text-right">
-                  {student.completedLessonsCount} / {student.totalLessons} دروس مكتملة
-                  <br />
-                  <Progress value={Math.round((student.completedLessonsCount / student.totalLessons) * 100)} />
-                  <div className="text-xs text-muted-foreground">
-                    {Math.round((student.completedLessonsCount / student.totalLessons) * 100)}%
-                  </div>
-                </div>
-              ) : (
-                <span className="text-xs text-muted-foreground text-right">لا بيانات</span>
-              )}
-            </TableCell>
-          )}
-          <TableCell className="text-center space-x-1 space-x-reverse">
-            <Button size="sm" onClick={() => openChatWithStudent(student)}><Mail className="w-4 h-4" /></Button>
-            <Button size="sm" onClick={() => handleEditStudent(student)}><Edit className="w-4 h-4" /></Button>
-            <Button size="sm" onClick={() => handleDeleteStudent(student.id)} className="text-red-600"><Trash2 className="w-4 h-4" /></Button>
-          </TableCell>
-        </TableRow>
-      ))}
-    </TableBody>
-  </Table>
-</div>
+              <Table className="min-w-full border-collapse border border-gray-300" dir="rtl">
+                <TableHeader>
+                  <TableRow className="bg-gray-100 text-gray-700 text-sm border-b border-gray-300">
+                    {shouldShowColumn('الاسم') && <TableHead className="font-semibold text-center border-l border-gray-300">الاسم</TableHead>}
+                    {shouldShowColumn('البريد الإلكتروني') && <TableHead className="font-semibold text-center border-l border-gray-300">البريد الإلكتروني</TableHead>}
+                    {shouldShowColumn('الكود') && <TableHead className="font-semibold text-center border-l border-gray-300">الكود</TableHead>}
+                    {shouldShowColumn('الرقم السري') && <TableHead className="font-semibold text-center border-l border-gray-300">الرقم السري</TableHead>}
+                    {shouldShowColumn('رقم الهاتف') && <TableHead className="font-semibold text-center border-l border-gray-300">رقم الهاتف</TableHead>}
+                    {shouldShowColumn('المجموعة') && <TableHead className="font-semibold text-center border-l border-gray-300">المجموعة</TableHead>}
+                    {shouldShowColumn('التقدّم') && <TableHead className="font-semibold text-center border-l border-gray-300">التقدّم</TableHead>}
+                    <TableHead className="font-semibold text-center">خيارات</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredStudents.map(student => (
+                    <TableRow key={student.id} className="border-b border-gray-200 hover:bg-gray-50">
+                      {shouldShowColumn('الاسم') && <TableCell className="border-l border-gray-200 text-right">{student.name}</TableCell>}
+                      {shouldShowColumn('البريد الإلكتروني') && <TableCell className="border-l border-gray-200 text-right">{student.email}</TableCell>}
+                      {shouldShowColumn('الكود') && <TableCell className="border-l border-gray-200 text-right">{student.code}</TableCell>}
+                      {shouldShowColumn('الرقم السري') && <TableCell className="border-l border-gray-200 text-right">{student.password}</TableCell>}
+                      {shouldShowColumn('رقم الهاتف') && <TableCell className="border-l border-gray-200 text-right">{student.phone}</TableCell>}
+                      {shouldShowColumn('المجموعة') && <TableCell className="border-l border-gray-200 text-right">{student.group || 'بدون مجموعة'}</TableCell>}
+                      {shouldShowColumn('التقدّم') && (
+                        <TableCell className="border-l border-gray-200">
+                          {typeof student.completedLessonsCount === 'number' && student.totalLessons > 0 ? (
+                            <div className="flex flex-col gap-1 text-right">
+                              {student.completedLessonsCount} / {student.totalLessons} دروس مكتملة
+                              <br />
+                              <Progress value={Math.round((student.completedLessonsCount / student.totalLessons) * 100)} />
+                              <div className="text-xs text-muted-foreground">
+                                {Math.round((student.completedLessonsCount / student.totalLessons) * 100)}%
+                              </div>
+                            </div>
+                          ) : (
+                            <span className="text-xs text-muted-foreground text-right">لا بيانات</span>
+                          )}
+                        </TableCell>
+                      )}
+                      <TableCell className="text-center space-x-1 space-x-reverse">
+                        <Button size="sm" onClick={() => openChatWithStudent(student)}><Mail className="w-4 h-4" /></Button>
+                        <Button size="sm" onClick={() => handleEditStudent(student)}><Edit className="w-4 h-4" /></Button>
+                        <Button size="sm" onClick={() => handleDeleteStudent(student.id)} className="text-red-600"><Trash2 className="w-4 h-4" /></Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </CardContent>
         <CardFooter className="text-sm text-muted-foreground">المجموع الكلي: {filteredStudents.length} طالب</CardFooter>
@@ -669,9 +638,9 @@ export const TeacherStudentsManager = ({ students, onStudentsUpdate }) => {
           </DialogHeader>
           <div className="space-y-3">
             <Label>محتوى الرسالة</Label>
-            <Textarea 
-              value={massMessageContent} 
-              onChange={(e) => setMassMessageContent(e.target.value)} 
+            <Textarea
+              value={massMessageContent}
+              onChange={(e) => setMassMessageContent(e.target.value)}
               rows={4}
               className="min-h-[150px]"
             />
@@ -702,8 +671,8 @@ export const TeacherStudentsManager = ({ students, onStudentsUpdate }) => {
 
             <div>
               <Label>اختر ملف إكسيل (.xlsx)</Label>
-              <Input 
-                type="file" 
+              <Input
+                type="file"
                 accept=".xlsx,.xls"
                 onChange={(e) => setUploadFile(e.target.files[0])}
                 className="mt-2"
@@ -765,15 +734,15 @@ export const TeacherStudentsManager = ({ students, onStudentsUpdate }) => {
             )}
 
             <DialogFooter className="flex gap-2">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={downloadTemplate}
                 className="flex-1"
               >
                 <FileSpreadsheet className="w-4 h-4 ml-2" />
                 تحميل النموذج
               </Button>
-              <Button 
+              <Button
                 onClick={handleBulkUpload}
                 disabled={!uploadFile || isUploading}
                 className="flex-1"
