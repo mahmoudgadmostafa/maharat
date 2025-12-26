@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -6,17 +6,18 @@ import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { 
-  MessageSquare, 
-  Search, 
-  Trash2, 
-  Edit, 
-  Users, 
+import {
+  MessageSquare,
+  Search,
+  Trash2,
+  Edit,
+  Users,
   AlertTriangle,
   Filter,
-  Eye
+  Eye,
+  Users2
 } from 'lucide-react';
-import { 
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -27,22 +28,25 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { 
+import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { 
-  getAllMessages, 
-  deleteMultipleMessages, 
-  updateMessage 
+import {
+  getAllMessages,
+  deleteMultipleMessages,
+  updateMessage,
+  sendGroupMessage,
+  getGroupMessages
 } from '@/lib/messageService';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/components/ui/use-toast';
+import { ChatModal } from '@/components/common/ChatModal';
 
-export const TeacherMessagesManager = () => {
+export const TeacherMessagesManager = ({ students = [] }) => {
   const { currentUser } = useAuth();
   const [allMessages, setAllMessages] = useState([]);
   const [filteredMessages, setFilteredMessages] = useState([]);
@@ -52,6 +56,13 @@ export const TeacherMessagesManager = () => {
   const [loading, setLoading] = useState(true);
   const [editingMessage, setEditingMessage] = useState(null);
   const [editText, setEditText] = useState('');
+
+  // Group Chat State
+  const [selectedGroup, setSelectedGroup] = useState(null);
+  const [groupMessages, setGroupMessages] = useState([]);
+  const [isGroupChatOpen, setIsGroupChatOpen] = useState(false);
+  const [groupMessagesLoading, setGroupMessagesLoading] = useState(false);
+  const [unsubscribeGroup, setUnsubscribeGroup] = useState(null);
 
   useEffect(() => {
     if (!currentUser) return;
@@ -65,6 +76,12 @@ export const TeacherMessagesManager = () => {
       if (unsubscribe) unsubscribe();
     };
   }, [currentUser]);
+
+  useEffect(() => {
+    return () => {
+      if (unsubscribeGroup) unsubscribeGroup();
+    };
+  }, [unsubscribeGroup]);
 
   useEffect(() => {
     let filtered = allMessages;
@@ -85,6 +102,13 @@ export const TeacherMessagesManager = () => {
 
     setFilteredMessages(filtered);
   }, [allMessages, searchTerm, filterType]);
+
+  const uniqueGroups = useMemo(() => {
+    const groups = students
+      .map(s => s.group)
+      .filter(g => g && typeof g === 'string' && g.trim() !== '');
+    return [...new Set(groups)].sort();
+  }, [students]);
 
   const getInitials = (name) => {
     if (!name) return '?';
@@ -162,12 +186,60 @@ export const TeacherMessagesManager = () => {
     }
   };
 
+  const handleOpenGroupChat = (groupName) => {
+    setSelectedGroup(groupName);
+    setIsGroupChatOpen(true);
+    setGroupMessagesLoading(true);
+
+    if (unsubscribeGroup) unsubscribeGroup();
+
+    const unsub = getGroupMessages(groupName, (msgs) => {
+      setGroupMessages(msgs || []);
+      setGroupMessagesLoading(false);
+    });
+    setUnsubscribeGroup(() => unsub);
+  };
+
+  const handleCloseGroupChat = () => {
+    setIsGroupChatOpen(false);
+    setSelectedGroup(null);
+    setGroupMessages([]);
+    if (unsubscribeGroup) {
+      unsubscribeGroup();
+      setUnsubscribeGroup(null);
+    }
+  };
+
+  const handleSendGroupMessage = async (message) => {
+    if (!selectedGroup || !currentUser || !message?.trim()) return;
+
+    try {
+      await sendGroupMessage(
+        selectedGroup,
+        currentUser.uid,
+        currentUser.name || currentUser.displayName || 'المعلم',
+        'teacher',
+        message.trim()
+      );
+    } catch (error) {
+      console.error("Error sending group message:", error);
+      toast({
+        title: "خطأ",
+        description: "فشل إرسال الرسالة",
+        variant: "destructive"
+      });
+    }
+  };
+
+
   const getMessageTypeLabel = (type) => {
     switch (type) {
       case 'student-to-student':
         return 'طالب إلى طالب';
       case 'teacher-to-student':
         return 'معلم إلى طالب';
+      case 'group-chat':
+        return 'محادثة جماعية';
       default:
         return 'غير محدد';
     }
@@ -179,6 +251,8 @@ export const TeacherMessagesManager = () => {
         return 'bg-blue-100 text-blue-800';
       case 'teacher-to-student':
         return 'bg-green-100 text-green-800';
+      case 'group-chat':
+        return 'bg-purple-100 text-purple-800';
       default:
         return 'bg-gray-100 text-gray-800';
     }
@@ -207,6 +281,34 @@ export const TeacherMessagesManager = () => {
         </Badge>
       </div>
 
+      {/* مجموعات الطلاب */}
+      {uniqueGroups.length > 0 && (
+        <Card className="glass-effect border-0 shadow-xl bg-gradient-to-r from-indigo-50 to-purple-50">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Users2 className="w-5 h-5 text-indigo-600" />
+              مجموعات الطلاب النشطة
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-3">
+              {uniqueGroups.map(group => (
+                <Button
+                  key={group}
+                  variant="secondary"
+                  className="bg-white hover:bg-indigo-100 border text-indigo-700 font-semibold shadow-sm"
+                  onClick={() => handleOpenGroupChat(group)}
+                >
+                  <Users className="w-4 h-4 mr-2" />
+                  {group}
+                </Button>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+
       {/* أدوات التحكم */}
       <Card className="glass-effect border-0 shadow-xl">
         <CardContent className="pt-6">
@@ -220,7 +322,7 @@ export const TeacherMessagesManager = () => {
                 className="pl-10"
               />
             </div>
-            
+
             <Select value={filterType} onValueChange={setFilterType}>
               <SelectTrigger className="w-48">
                 <Filter className="w-4 h-4 ml-2" />
@@ -230,6 +332,7 @@ export const TeacherMessagesManager = () => {
                 <SelectItem value="all">جميع الرسائل</SelectItem>
                 <SelectItem value="student-to-student">طالب إلى طالب</SelectItem>
                 <SelectItem value="teacher-to-student">معلم إلى طالب</SelectItem>
+                <SelectItem value="group-chat">محادثة جماعية</SelectItem>
               </SelectContent>
             </Select>
 
@@ -241,7 +344,7 @@ export const TeacherMessagesManager = () => {
               >
                 {selectedMessages.length === filteredMessages.length ? 'إلغاء التحديد' : 'تحديد الكل'}
               </Button>
-              
+
               {selectedMessages.length > 0 && (
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
@@ -257,7 +360,7 @@ export const TeacherMessagesManager = () => {
                         تأكيد الحذف
                       </AlertDialogTitle>
                       <AlertDialogDescription>
-                        هل أنت متأكد من حذف {selectedMessages.length} رسالة؟ 
+                        هل أنت متأكد من حذف {selectedMessages.length} رسالة؟
                         هذا الإجراء لا يمكن التراجع عنه.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
@@ -280,7 +383,7 @@ export const TeacherMessagesManager = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <MessageSquare className="w-5 h-5 text-blue-600" />
-            الرسائل
+            سجل الرسائل
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -293,22 +396,21 @@ export const TeacherMessagesManager = () => {
               {filteredMessages.map((message) => (
                 <div
                   key={message.id}
-                  className={`flex items-start gap-3 p-4 rounded-lg border transition-colors ${
-                    selectedMessages.includes(message.id) ? 'bg-blue-50 border-blue-200' : 'hover:bg-gray-50'
-                  }`}
+                  className={`flex items-start gap-3 p-4 rounded-lg border transition-colors ${selectedMessages.includes(message.id) ? 'bg-blue-50 border-blue-200' : 'hover:bg-gray-50'
+                    }`}
                 >
                   <Checkbox
                     checked={selectedMessages.includes(message.id)}
                     onCheckedChange={() => handleSelectMessage(message.id)}
                   />
-                  
+
                   <div className="flex gap-3 flex-1 min-w-0">
                     <Avatar className="h-10 w-10 flex-shrink-0">
                       <AvatarFallback>
                         {getInitials(message.senderName)}
                       </AvatarFallback>
                     </Avatar>
-                    
+
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
                         <span className="font-medium text-sm">
@@ -316,13 +418,13 @@ export const TeacherMessagesManager = () => {
                         </span>
                         <span className="text-gray-400 text-xs">→</span>
                         <span className="text-sm text-gray-600">
-                          {message.receiverName || 'مستخدم غير معروف'}
+                          {message.type === 'group-chat' ? (message.groupId || 'مجموعة') : (message.receiverName || 'مستخدم غير معروف')}
                         </span>
                         <Badge className={`text-xs ${getMessageTypeBadgeColor(message.type)}`}>
                           {getMessageTypeLabel(message.type)}
                         </Badge>
                       </div>
-                      
+
                       {editingMessage?.id === message.id ? (
                         <div className="space-y-2">
                           <Input
@@ -334,9 +436,9 @@ export const TeacherMessagesManager = () => {
                             <Button size="sm" onClick={handleSaveEdit}>
                               حفظ
                             </Button>
-                            <Button 
-                              size="sm" 
-                              variant="outline" 
+                            <Button
+                              size="sm"
+                              variant="outline"
                               onClick={() => {
                                 setEditingMessage(null);
                                 setEditText('');
@@ -361,7 +463,7 @@ export const TeacherMessagesManager = () => {
                       )}
                     </div>
                   </div>
-                  
+
                   <div className="flex gap-1 flex-shrink-0">
                     <Button
                       size="sm"
@@ -378,6 +480,22 @@ export const TeacherMessagesManager = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Group Chat Modal */}
+      {isGroupChatOpen && selectedGroup && (
+        <ChatModal
+          isOpen={isGroupChatOpen}
+          onClose={handleCloseGroupChat}
+          currentUser={currentUser}
+          targetUser={null}
+          messages={groupMessages}
+          onSendMessage={handleSendGroupMessage}
+          isLoading={groupMessagesLoading}
+          isGroup={true}
+          groupName={selectedGroup}
+          onDeleteMessages={deleteMultipleMessages}
+        />
+      )}
     </motion.div>
   );
 };
