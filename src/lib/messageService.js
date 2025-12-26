@@ -190,3 +190,38 @@ export const sendTeacherMessage = async (senderId, receiverId, message, senderNa
 
   return await createMessage(messageData);
 };
+
+// إرسال رسالة للمجموعة
+export const sendGroupMessage = async (groupId, senderId, senderName, role, message) => {
+  const messageData = {
+    groupId, // المعرف المشترك للمجموعة (اسم المجموعة)
+    senderId,
+    senderName,
+    role, // 'student' or 'teacher'
+    message: message.trim(),
+    type: 'group-chat',
+    participants: [groupId] // نستخدم هذا للحفاظ على اتساق الاستعلامات، ولكن groupId هو الأساس
+  };
+
+  return await createMessage(messageData);
+};
+
+// الحصول على رسائل المجموعة
+export const getGroupMessages = (groupId, callback) => {
+  // نقوم بتبسيط الاستعلام لتجنب مشاكل الفهرسة (Index) في الفايربيس
+  // سنقوم بفلترة النوع والمحذوفات في جانب العميل
+  const q = query(
+    collection(db, 'messages'),
+    where('groupId', '==', groupId),
+    orderBy('timestamp', 'asc')
+  );
+
+  return onSnapshot(q, (snapshot) => {
+    const messages = snapshot.docs
+      .map(doc => ({ id: doc.id, ...doc.data() }))
+      .filter(msg => msg.type === 'group-chat' && !msg.deleted);
+    callback(messages);
+  }, (error) => {
+    console.error("Error fetching group messages:", error);
+  });
+};
