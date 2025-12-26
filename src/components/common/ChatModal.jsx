@@ -113,7 +113,6 @@ export const ChatModal = ({ isOpen, onClose, currentUser, targetUser, messages, 
               </Avatar>
               <div className="flex-1 min-w-0">
                 <DialogTitle className="truncate">محادثة مع {targetUser?.name || 'مستخدم'}</DialogTitle>
-                {targetUser?.email && <DialogDescription className="text-xs truncate">{targetUser.email}</DialogDescription>}
               </div>
             </div>
             <Button
