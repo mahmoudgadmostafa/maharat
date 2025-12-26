@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Send, UserCircle, Bot, Trash2, Pencil, Save } from 'lucide-react';
+import { Send, UserCircle, Bot, Trash2, Pencil, Save, X } from 'lucide-react';
 import { Timestamp, doc, updateDoc, deleteDoc, writeBatch } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { toast } from '@/components/ui/use-toast';
@@ -104,42 +104,55 @@ export const ChatModal = ({ isOpen, onClose, currentUser, targetUser, messages, 
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="w-full max-w-[95vw] max-h-[95vh] h-auto sm:h-[80vh] sm:max-w-lg md:max-w-2xl flex flex-col p-0 m-2 sm:m-4 overflow-auto">
-        <DialogHeader className="p-3 sm:p-4 border-b flex-col sm:flex-row gap-2 sm:gap-0 justify-between items-start sm:items-center flex-shrink-0 sticky top-0 bg-white z-10">
-          <div className="flex items-center gap-2">
-            <Avatar className="h-8 w-8">
-              <AvatarFallback>{targetUser?.name ? getInitials(targetUser.name) : <UserCircle />}</AvatarFallback>
-            </Avatar>
-            <div>
-              <DialogTitle>محادثة مع {targetUser?.name || 'مستخدم'}</DialogTitle>
-              {targetUser?.email && <DialogDescription className="text-xs">{targetUser.email}</DialogDescription>}
+      <DialogContent className="w-full max-w-[100vw] max-h-[100vh] h-[100vh] sm:max-w-lg sm:h-[85vh] sm:max-h-[85vh] md:max-w-2xl flex flex-col p-0 m-0 sm:m-4 overflow-auto sm:rounded-lg">
+        <DialogHeader className="p-3 sm:p-4 border-b flex-shrink-0 sticky top-0 bg-white z-10">
+          <div className="flex items-center justify-between w-full">
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              <Avatar className="h-8 w-8 flex-shrink-0">
+                <AvatarFallback>{targetUser?.name ? getInitials(targetUser.name) : <UserCircle />}</AvatarFallback>
+              </Avatar>
+              <div className="flex-1 min-w-0">
+                <DialogTitle className="truncate">محادثة مع {targetUser?.name || 'مستخدم'}</DialogTitle>
+                {targetUser?.email && <DialogDescription className="text-xs truncate">{targetUser.email}</DialogDescription>}
+              </div>
             </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onClose}
+              className="flex-shrink-0 h-8 w-8 rounded-full hover:bg-gray-100"
+              aria-label="إغلاق"
+            >
+              <X className="h-5 w-5" />
+            </Button>
           </div>
-          {isTeacher && selectedMessages.length > 0 && (
-            <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
-              <AlertDialogTrigger asChild>
-                <Button variant="destructive" size="sm" onClick={() => setShowDeleteConfirm(true)}>
-                  <Trash2 className="w-4 h-4 ml-1" />
-                  حذف ({selectedMessages.length})
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>تأكيد الحذف</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    هل تريد حذف هذه الرسائل؟ هذا الإجراء لا يمكن التراجع عنه.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>إلغاء</AlertDialogCancel>
-                  <AlertDialogAction onClick={confirmDeleteSelectedMessages}>حذف</AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          )}
         </DialogHeader>
 
         <ScrollArea ref={scrollAreaRef} className="flex-grow p-4 bg-muted/30">
+          {isTeacher && selectedMessages.length > 0 && (
+            <div className="mb-3 flex justify-end">
+              <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+                <AlertDialogTrigger asChild>
+                  <Button variant="destructive" size="sm" onClick={() => setShowDeleteConfirm(true)}>
+                    <Trash2 className="w-4 h-4 ml-1" />
+                    حذف ({selectedMessages.length})
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>تأكيد الحذف</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      هل تريد حذف هذه الرسائل؟ هذا الإجراء لا يمكن التراجع عنه.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>إلغاء</AlertDialogCancel>
+                    <AlertDialogAction onClick={confirmDeleteSelectedMessages}>حذف</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
+          )}
           <div className="space-y-1">
             {messages.map((msg) => {
               const isCurrentSender = msg.senderId === currentUser?.uid;
