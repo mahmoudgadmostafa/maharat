@@ -429,9 +429,6 @@ export const StudentMessaging = () => {
                       <p className="font-medium text-sm truncate">
                         {getUserName(student)}
                       </p>
-                      <p className="text-xs text-gray-500 truncate">
-                        {getUserEmail(student)}
-                      </p>
                     </div>
                     <Button
                       size="sm"
