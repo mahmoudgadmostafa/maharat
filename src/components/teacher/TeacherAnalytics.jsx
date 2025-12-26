@@ -833,7 +833,6 @@ const TeacherAnalytics = ({
                       <TableHead className="text-right border border-gray-300 p-3 font-semibold w-[200px]">الطالب</TableHead>
                       <TableHead className="text-right border border-gray-300 p-3 font-semibold">المجموعة</TableHead>
                       <TableHead className="text-right border border-gray-300 p-3 font-semibold text-center">التقدم</TableHead>
-                      <TableHead className="text-right border border-gray-300 p-3 font-semibold text-center">متوسط الدرجة</TableHead>
                       <TableHead className="text-right border border-gray-300 p-3 font-semibold text-center">فيديو</TableHead>
                       <TableHead className="text-right border border-gray-300 p-3 font-semibold text-center">PDF</TableHead>
                       <TableHead className="text-right border border-gray-300 p-3 font-semibold text-center">أسئلة</TableHead>
@@ -861,9 +860,6 @@ const TeacherAnalytics = ({
                               <span className="font-bold text-blue-700">{Math.round(student.progressPercentage)}%</span>
                               <span className="text-[10px] text-gray-500">{student.completedLessons} من {lessons.length}</span>
                             </div>
-                          </TableCell>
-                          <TableCell className="border border-gray-300 p-3 text-center font-bold text-indigo-700">
-                            {student.averageScore.toFixed(1)}
                           </TableCell>
                           <TableCell className="border border-gray-300 p-3 text-center text-red-600 font-medium">
                             {Math.round(student.videoProgressPercentage)}%
