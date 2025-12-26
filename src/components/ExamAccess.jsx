@@ -121,27 +121,27 @@ const ExamAccess = ({ examUrl, examName, examId }) => {
   return (
     <Card className="glass-effect-alt border-0 shadow-lg bg-gradient-to-r from-red-500/10 to-orange-500/10">
       <CardHeader className="pb-3">
-        <CardTitle className="flex items-center justify-between">
+        <CardTitle className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <Award className="w-6 h-6 text-red-600" />
-            <span className="text-lg text-red-700">{examName || 'الاختبار'}</span>
+            <Award className="w-5 h-5 sm:w-6 sm:h-6 text-red-600" />
+            <span className="text-base sm:text-lg text-red-700">{examName || 'الاختبار'}</span>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2 w-full sm:w-auto">
             <Button
               variant="outline"
               size="sm"
               onClick={handleToggleExpanded}
-              className="glass-button-alt border-red-300 hover:border-red-500"
+              className="glass-button-alt border-red-300 hover:border-red-500 min-h-[36px] flex-1 sm:flex-none"
             >
               {isExpanded ? (
                 <>
-                  <EyeOff className="w-4 h-4 ml-1" />
-                  إخفاء
+                  <EyeOff className="w-3.5 h-3.5 sm:w-4 sm:h-4 ml-1" />
+                  <span className="text-xs sm:text-sm">إخفاء</span>
                 </>
               ) : (
                 <>
-                  <Eye className="w-4 h-4 ml-1" />
-                  عرض
+                  <Eye className="w-3.5 h-3.5 sm:w-4 sm:h-4 ml-1" />
+                  <span className="text-xs sm:text-sm">عرض</span>
                 </>
               )}
             </Button>
@@ -149,10 +149,10 @@ const ExamAccess = ({ examUrl, examName, examId }) => {
               variant="outline"
               size="sm"
               onClick={handleExamAccess}
-              className="glass-button-alt border-red-300 hover:border-red-500"
+              className="glass-button-alt border-red-300 hover:border-red-500 min-h-[36px] flex-1 sm:flex-none"
             >
-              <ExternalLink className="w-4 h-4 ml-1" />
-              فتح خارجي
+              <ExternalLink className="w-3.5 h-3.5 sm:w-4 sm:h-4 ml-1" />
+              <span className="text-xs sm:text-sm">فتح خارجي</span>
             </Button>
             <Button
               variant={isCompleted ? "success" : "default"}
@@ -163,17 +163,17 @@ const ExamAccess = ({ examUrl, examName, examId }) => {
                 showMotivation(MOTIVATION_TYPES.EXAM_COMPLETE);
               }}
               disabled={!isUnlocked || isCompleted}
-              className={`${isCompleted ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'} text-white shadow-sm transition-all duration-300 disabled:opacity-50 disabled:grayscale`}
+              className={`${isCompleted ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'} text-white shadow-sm transition-all duration-300 disabled:opacity-50 disabled:grayscale min-h-[36px] flex-1 sm:flex-none`}
             >
               {isCompleted ? (
                 <>
-                  <CheckCircle className="w-4 h-4 ml-1" />
-                  أنهيت الاختبار ✓
+                  <CheckCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 ml-1" />
+                  <span className="text-xs sm:text-sm">أنهيت الاختبار ✓</span>
                 </>
               ) : (
                 <>
-                  <Award className="w-4 h-4 ml-1" />
-                  أنهيت الاختبار
+                  <Award className="w-3.5 h-3.5 sm:w-4 sm:h-4 ml-1" />
+                  <span className="text-xs sm:text-sm">أنهيت الاختبار</span>
                 </>
               )}
             </Button>
@@ -183,7 +183,7 @@ const ExamAccess = ({ examUrl, examName, examId }) => {
 
       {isExpanded && (
         <CardContent className="pt-0">
-          <div className="border rounded-lg overflow-hidden bg-white" style={{ height: '600px' }}>
+          <div className="border rounded-lg overflow-hidden bg-white" style={{ height: 'clamp(400px, 60vh, 600px)' }}>
             <iframe
               src={processedUrl}
               width="100%"
