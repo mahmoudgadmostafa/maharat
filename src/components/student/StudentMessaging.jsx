@@ -54,7 +54,7 @@ export const StudentMessaging = () => {
 
     const fetchStudents = async () => {
       try {
-        const students = await getAvailableStudents(currentUser.uid);
+        const students = await getAvailableStudents(currentUser.uid, currentUser.group);
         if (isMounted) {
           setAvailableStudents(students || []);
         }
@@ -309,7 +309,7 @@ export const StudentMessaging = () => {
         <h2 className="text-2xl sm:text-3xl font-bold gradient-text">المراسلات</h2>
         <Badge variant="outline" className="flex items-center gap-2 self-start sm:self-auto">
           <Users className="w-4 h-4" />
-          <span>{availableStudents.length} طالب متاح</span>
+          <span>{availableStudents.length} طالب من مجموعتك</span>
         </Badge>
       </div>
 
