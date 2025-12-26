@@ -385,8 +385,8 @@ export const StudentMessaging = () => {
 
       {/* Group Chat Card */}
       {currentUser.group && (
-        <Card className="glass-effect border-0 shadow-xl bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-100">
-          <CardContent className="p-4 flex items-center justify-between">
+        <Card className="glass-effect border-0 shadow-xl bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-100 overflow-hidden">
+          <CardContent className="p-3 sm:p-4 flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-right">
             <div className="flex items-center gap-4">
               <div className="p-3 bg-blue-100 rounded-full text-blue-600">
                 <Users2 className="w-6 h-6" />
@@ -404,9 +404,9 @@ export const StudentMessaging = () => {
         </Card>
       )}
 
-      <div className="grid lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         {/* قائمة المحادثات الحالية */}
-        <Card className="glass-effect border-0 shadow-xl">
+        <Card className="glass-effect border-0 shadow-xl order-2 lg:order-1">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
               <MessageCircle className="w-5 h-5 text-blue-600" />
@@ -422,7 +422,7 @@ export const StudentMessaging = () => {
                 </p>
               </div>
             ) : (
-              <div className="space-y-3 max-h-[250px] sm:max-h-[350px] lg:max-h-[400px] overflow-y-auto pr-2">
+              <div className="space-y-3 max-h-[35vh] sm:max-h-[350px] lg:max-h-[400px] overflow-y-auto pr-2 scroll-touch">
                 {conversations.map((conv) => {
                   if (!conv) return null;
 
@@ -470,7 +470,7 @@ export const StudentMessaging = () => {
         </Card>
 
         {/* قائمة الطلاب المتاحين */}
-        <Card className="glass-effect border-0 shadow-xl">
+        <Card className="glass-effect border-0 shadow-xl order-1 lg:order-2">
           <CardHeader className="space-y-4">
             <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
               <Users className="w-5 h-5 text-green-600" />
@@ -496,7 +496,7 @@ export const StudentMessaging = () => {
                 </p>
               </div>
             ) : (
-              <div className="space-y-3 max-h-[250px] sm:max-h-[350px] lg:max-h-[400px] overflow-y-auto pr-2">
+              <div className="space-y-3 max-h-[40vh] sm:max-h-[350px] lg:max-h-[400px] overflow-y-auto pr-2 scroll-touch">
                 {filteredStudents.map((student) => (
                   <div
                     key={student.id}
