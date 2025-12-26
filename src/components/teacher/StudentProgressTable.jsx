@@ -338,7 +338,7 @@ const StudentProgressTable = ({
               <SelectContent>
                 <SelectItem value="name">الاسم</SelectItem>
                 <SelectItem value="progressPercentage">نسبة التقدم</SelectItem>
-                <SelectItem value="averageScore">متوسط الدرجات</SelectItem>
+
                 <SelectItem value="videoCompletionRate">إكمال الفيديو</SelectItem>
                 <SelectItem value="badgesCount">عدد الأوسمة</SelectItem>
               </SelectContent>
@@ -361,7 +361,6 @@ const StudentProgressTable = ({
                   <TableHead className="text-right border border-gray-300 p-3 font-semibold">الطالب</TableHead>
                   <TableHead className="text-right border border-gray-300 p-3 font-semibold">الحالة</TableHead>
                   <TableHead className="text-right border border-gray-300 p-3 font-semibold">تقدم الدروس</TableHead>
-                  <TableHead className="text-right border border-gray-300 p-3 font-semibold">الدرجات</TableHead>
                   <TableHead className="text-right border border-gray-300 p-3 font-semibold">
                     <div className="flex items-center gap-1">
                       <Video className="w-4 h-4" />
@@ -418,12 +417,6 @@ const StudentProgressTable = ({
                             style={{ width: `${student.progressPercentage}%` }}
                           ></div>
                         </div>
-                      </div>
-                    </TableCell>
-                    <TableCell className="border border-gray-300 p-3">
-                      <div className="text-center">
-                        <div className="font-medium text-lg">{student.averageScore.toFixed(1)}</div>
-                        <div className="text-sm text-gray-500">متوسط</div>
                       </div>
                     </TableCell>
                     <TableCell className="border border-gray-300 p-3">
