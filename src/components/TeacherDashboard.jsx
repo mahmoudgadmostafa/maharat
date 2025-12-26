@@ -563,7 +563,7 @@ const TeacherDashboard = memo(() => {
           </TabsContent>
           <TabsContent value="messages">
             <Suspense fallback={<LoadingSpinner />}>
-              <TeacherMessagesManager />
+              <TeacherMessagesManager students={students} />
             </Suspense>
           </TabsContent>
           <TabsContent value="analytics">
