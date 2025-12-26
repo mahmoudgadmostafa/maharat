@@ -36,7 +36,7 @@ const StudentQuickAccess = ({ platformSettings, onOpenResourceModal }) => {
               <Button
                 key={room.id}
                 variant="outline"
-                className="w-full justify-start p-3 sm:p-4 h-auto glass-button-alt border-green-300 hover:border-green-500"
+                className="w-full justify-start p-3 sm:p-4 h-auto min-h-[44px] glass-button-alt border-green-300 hover:border-green-500"
                 onClick={() => onOpenResourceModal(room.url, room.name, 'meeting')}
               >
                 <ExternalLink className="w-4 h-4 sm:w-5 sm:h-5 ml-2 sm:ml-3 text-green-600" />
@@ -63,7 +63,7 @@ const StudentQuickAccess = ({ platformSettings, onOpenResourceModal }) => {
             {platformSettings.studentAiToolsList.map((tool) => (
               <div
                 key={tool.id}
-                className="w-full flex items-center justify-between p-4 sm:p-5 h-auto bg-white/10 backdrop-blur-md border border-purple-200/30 rounded-2xl shadow-md hover:shadow-lg transition-colors duration-150 cursor-pointer"
+                className="w-full flex items-center justify-between p-4 sm:p-5 h-auto min-h-[44px] bg-white/10 backdrop-blur-md border border-purple-200/30 rounded-2xl shadow-md hover:shadow-lg transition-colors duration-150 cursor-pointer"
                 onClick={() => openAiToolPopup(tool.url, tool.name)}
                 role="button"
               >
