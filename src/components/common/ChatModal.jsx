@@ -104,8 +104,8 @@ export const ChatModal = ({ isOpen, onClose, currentUser, targetUser, messages, 
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="w-full h-[90vh] sm:h-[80vh] sm:max-w-lg md:max-w-2xl flex flex-col p-0">
-        <DialogHeader className="p-3 sm:p-4 border-b flex-col sm:flex-row gap-2 sm:gap-0 justify-between items-start sm:items-center">
+      <DialogContent className="w-full max-h-[95vh] h-auto sm:h-[80vh] sm:max-w-lg md:max-w-2xl flex flex-col p-0 m-2 sm:m-4">
+        <DialogHeader className="p-3 sm:p-4 border-b flex-col sm:flex-row gap-2 sm:gap-0 justify-between items-start sm:items-center flex-shrink-0">
           <div className="flex items-center gap-2">
             <Avatar className="h-8 w-8">
               <AvatarFallback>{targetUser?.name ? getInitials(targetUser.name) : <UserCircle />}</AvatarFallback>
@@ -213,7 +213,7 @@ export const ChatModal = ({ isOpen, onClose, currentUser, targetUser, messages, 
           </div>
         </ScrollArea>
 
-        <DialogFooter className="p-4 border-t">
+        <DialogFooter className="p-3 sm:p-4 border-t flex-shrink-0">
           <div className="flex w-full items-center gap-2">
             <Textarea
               value={newMessage}
