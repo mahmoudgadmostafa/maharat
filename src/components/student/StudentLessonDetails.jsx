@@ -41,7 +41,7 @@ const StudentLessonDetails = ({
     <div className="space-y-6">
       <Card className="glass-effect-alt border-0 shadow-xl overflow-hidden">
         <CardHeader className="bg-gray-50/50">
-          <CardTitle className="text-2xl gradient-text-alt">الدرس {lesson.lessonNumber}: {lesson.title}</CardTitle>
+          <CardTitle className="text-lg sm:text-xl lg:text-2xl gradient-text-alt break-words">الدرس {lesson.lessonNumber}: {lesson.title}</CardTitle>
           {studentProgress.completedLessons.includes(lesson.id) && (
             <Badge variant="default" className="mt-1 bg-green-500 text-white w-fit">مكتمل</Badge>
           )}
