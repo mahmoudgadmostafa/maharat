@@ -104,8 +104,8 @@ export const ChatModal = ({ isOpen, onClose, currentUser, targetUser, messages, 
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-lg h-[70vh] flex flex-col p-0">
-        <DialogHeader className="p-4 border-b flex-row justify-between items-center">
+      <DialogContent className="w-full h-[90vh] sm:h-[80vh] sm:max-w-lg md:max-w-2xl flex flex-col p-0">
+        <DialogHeader className="p-3 sm:p-4 border-b flex-col sm:flex-row gap-2 sm:gap-0 justify-between items-start sm:items-center">
           <div className="flex items-center gap-2">
             <Avatar className="h-8 w-8">
               <AvatarFallback>{targetUser?.name ? getInitials(targetUser.name) : <UserCircle />}</AvatarFallback>
@@ -158,7 +158,7 @@ export const ChatModal = ({ isOpen, onClose, currentUser, targetUser, messages, 
                   )}
 
                   <div
-                    className={`relative max-w-[70%] p-3 rounded-lg shadow cursor-pointer group-hover:bg-opacity-90 ${isCurrentSender
+                    className={`relative max-w-[90%] sm:max-w-[80%] md:max-w-[70%] p-3 rounded-lg shadow cursor-pointer group-hover:bg-opacity-90 ${isCurrentSender
                       ? 'bg-gradient-to-r from-blue-500 to-sky-500 text-white rounded-br-none'
                       : 'bg-white text-gray-800 border rounded-bl-none'
                       }`}
@@ -219,8 +219,8 @@ export const ChatModal = ({ isOpen, onClose, currentUser, targetUser, messages, 
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
               placeholder="اكتب رسالتك هنا..."
-              className="flex-grow resize-none"
-              rows={1}
+              className="flex-grow resize-none text-base sm:text-sm"
+              rows={2}
               onKeyPress={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
