@@ -142,27 +142,27 @@ const PDFViewer = ({ pdfUrl, lessonId, className = "" }) => {
   return (
     <Card className="glass-effect-alt border-0 shadow-lg">
       <CardHeader className="pb-3">
-        <CardTitle className="flex items-center justify-between">
+        <CardTitle className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <FileText className="w-6 h-6 text-red-600" />
-            <span className="text-lg">ملف PDF</span>
+            <FileText className="w-5 h-5 sm:w-6 sm:h-6 text-red-600" />
+            <span className="text-base sm:text-lg">ملف PDF</span>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2 w-full sm:w-auto">
             <Button
               variant="outline"
               size="sm"
               onClick={handleToggleExpanded}
-              className="glass-button-alt"
+              className="glass-button-alt min-h-[36px] flex-1 sm:flex-none"
             >
               {isExpanded ? (
                 <>
-                  <EyeOff className="w-4 h-4 ml-1" />
-                  إخفاء
+                  <EyeOff className="w-3.5 h-3.5 sm:w-4 sm:h-4 ml-1" />
+                  <span className="text-xs sm:text-sm">إخفاء</span>
                 </>
               ) : (
                 <>
-                  <Eye className="w-4 h-4 ml-1" />
-                  عرض
+                  <Eye className="w-3.5 h-3.5 sm:w-4 sm:h-4 ml-1" />
+                  <span className="text-xs sm:text-sm">عرض</span>
                 </>
               )}
             </Button>
@@ -170,19 +170,19 @@ const PDFViewer = ({ pdfUrl, lessonId, className = "" }) => {
               variant="outline"
               size="sm"
               onClick={() => window.open(downloadUrl, '_blank')}
-              className="glass-button-alt"
+              className="glass-button-alt min-h-[36px] flex-1 sm:flex-none"
             >
-              <Download className="w-4 h-4 ml-1" />
-              تحميل
+              <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4 ml-1" />
+              <span className="text-xs sm:text-sm">تحميل</span>
             </Button>
             <Button
               variant="outline"
               size="sm"
               onClick={handlePDFOpen}
-              className="glass-button-alt"
+              className="glass-button-alt min-h-[36px] flex-1 sm:flex-none"
             >
-              <ExternalLink className="w-4 h-4 ml-1" />
-              فتح خارجي
+              <ExternalLink className="w-3.5 h-3.5 sm:w-4 sm:h-4 ml-1" />
+              <span className="text-xs sm:text-sm">فتح خارجي</span>
             </Button>
             <Button
               variant={isCompleted ? "success" : "default"}
@@ -193,17 +193,17 @@ const PDFViewer = ({ pdfUrl, lessonId, className = "" }) => {
                 showMotivation(MOTIVATION_TYPES.PDF_VIEWED);
               }}
               disabled={!isUnlocked || isCompleted}
-              className={`${isCompleted ? 'bg-green-600 hover:bg-green-700' : 'bg-blue-600 hover:bg-blue-700'} text-white shadow-sm transition-all duration-300 disabled:opacity-50 disabled:grayscale`}
+              className={`${isCompleted ? 'bg-green-600 hover:bg-green-700' : 'bg-blue-600 hover:bg-blue-700'} text-white shadow-sm transition-all duration-300 disabled:opacity-50 disabled:grayscale min-h-[36px] flex-1 sm:flex-none`}
             >
               {isCompleted ? (
                 <>
-                  <CheckCircle className="w-4 h-4 ml-1" />
-                  تم الاطلاع ✓
+                  <CheckCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 ml-1" />
+                  <span className="text-xs sm:text-sm">تم الاطلاع ✓</span>
                 </>
               ) : (
                 <>
-                  <FileText className="w-4 h-4 ml-1" />
-                  تم الاطلاع
+                  <FileText className="w-3.5 h-3.5 sm:w-4 sm:h-4 ml-1" />
+                  <span className="text-xs sm:text-sm">تم الاطلاع</span>
                 </>
               )}
             </Button>
@@ -214,7 +214,7 @@ const PDFViewer = ({ pdfUrl, lessonId, className = "" }) => {
       {isExpanded && (
         <CardContent className="pt-0">
           {pdfError ? (
-            <div className="border rounded-lg overflow-hidden bg-gray-50 p-8 text-center" style={{ height: '600px' }}>
+            <div className="border rounded-lg overflow-hidden bg-gray-50 p-4 sm:p-8 text-center" style={{ height: 'clamp(400px, 60vh, 600px)' }}>
               <div className="flex flex-col items-center justify-center h-full space-y-4">
                 <FileText className="w-16 h-16 text-gray-400" />
                 <h3 className="text-lg font-semibold text-gray-700">تعذر عرض ملف PDF</h3>
@@ -240,7 +240,7 @@ const PDFViewer = ({ pdfUrl, lessonId, className = "" }) => {
               </div>
             </div>
           ) : (
-            <div className="border rounded-lg overflow-hidden bg-white" style={{ height: '600px' }}>
+            <div className="border rounded-lg overflow-hidden bg-white" style={{ height: 'clamp(400px, 60vh, 600px)' }}>
               <iframe
                 src={processedUrl}
                 width="100%"
