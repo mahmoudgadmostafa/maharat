@@ -134,8 +134,8 @@ export const getAllMessages = (callback) => {
   });
 };
 
-// الحصول على الطلاب المتاحين للمراسلة
-export const getAvailableStudents = async (currentUserId) => {
+// الحصول على الطلاب المتاحين للمراسلة (من نفس المجموعة)
+export const getAvailableStudents = async (currentUserId, currentUserGroup) => {
   try {
     const q = query(
       collection(db, 'users'),
@@ -145,7 +145,16 @@ export const getAvailableStudents = async (currentUserId) => {
     const snapshot = await getDocs(q);
     return snapshot.docs
       .map(doc => ({ id: doc.id, ...doc.data() }))
-      .filter(user => user.id !== currentUserId);
+      .filter(user => {
+        // استبعاد المستخدم الحالي
+        if (user.id === currentUserId) return false;
+
+        // إذا كان المستخدم الحالي ليس له مجموعة، لا يرى أي طلاب
+        if (!currentUserGroup || currentUserGroup.trim() === '') return false;
+
+        // إظهار فقط الطلاب من نفس المجموعة
+        return user.group === currentUserGroup;
+      });
   } catch (error) {
     console.error('Error getting available students:', error);
     throw error;
