@@ -331,7 +331,7 @@ export const StudentMessaging = () => {
                 </p>
               </div>
             ) : (
-              <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
+              <div className="space-y-3 max-h-[250px] sm:max-h-[350px] lg:max-h-[400px] overflow-y-auto pr-2">
                 {conversations.map((conv) => {
                   if (!conv) return null;
 
@@ -405,7 +405,7 @@ export const StudentMessaging = () => {
                 </p>
               </div>
             ) : (
-              <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
+              <div className="space-y-3 max-h-[250px] sm:max-h-[350px] lg:max-h-[400px] overflow-y-auto pr-2">
                 {filteredStudents.map((student) => (
                   <div
                     key={student.id}
@@ -436,7 +436,7 @@ export const StudentMessaging = () => {
                     <Button
                       size="sm"
                       variant="outline"
-                      className="flex-shrink-0"
+                      className="flex-shrink-0 min-w-[40px] min-h-[40px]"
                       aria-label={`مراسلة ${getUserName(student)}`}
                     >
                       <Send className="w-4 h-4" />
