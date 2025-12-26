@@ -11,13 +11,13 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Send, UserCircle, Bot, Trash2, Pencil, Save, X } from 'lucide-react';
+import { Send, UserCircle, Bot, Trash2, Pencil, Save, X, Users } from 'lucide-react';
 import { Timestamp, doc, updateDoc, deleteDoc, writeBatch } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { toast } from '@/components/ui/use-toast';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
-export const ChatModal = ({ isOpen, onClose, currentUser, targetUser, messages, onSendMessage, onDeleteMessages }) => {
+export const ChatModal = ({ isOpen, onClose, currentUser, targetUser, messages, onSendMessage, onDeleteMessages, isGroup, groupName }) => {
   const [newMessage, setNewMessage] = useState('');
   const scrollAreaRef = useRef(null);
   const [selectedMessages, setSelectedMessages] = useState([]);
@@ -102,6 +102,8 @@ export const ChatModal = ({ isOpen, onClose, currentUser, targetUser, messages, 
     }
   };
 
+  const modalTitle = isGroup ? (groupName || 'مجموعة') : (targetUser?.name || 'مستخدم');
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="w-screen max-w-[100vw] max-h-[100vh] h-[100vh] sm:w-auto sm:max-w-lg sm:h-[85vh] sm:max-h-[85vh] md:max-w-2xl flex flex-col p-0 m-0 sm:m-4 overflow-auto sm:rounded-lg !left-0 !right-0 !translate-x-0 sm:!left-[50%] sm:!right-auto sm:!translate-x-[-50%]">
@@ -109,10 +111,14 @@ export const ChatModal = ({ isOpen, onClose, currentUser, targetUser, messages, 
           <div className="flex items-center justify-between w-full">
             <div className="flex items-center gap-2 flex-1 min-w-0">
               <Avatar className="h-8 w-8 flex-shrink-0">
-                <AvatarFallback>{targetUser?.name ? getInitials(targetUser.name) : <UserCircle />}</AvatarFallback>
+                <AvatarFallback>
+                  {isGroup ? <Users className="w-4 h-4" /> : (targetUser?.name ? getInitials(targetUser.name) : <UserCircle />)}
+                </AvatarFallback>
               </Avatar>
               <div className="flex-1 min-w-0">
-                <DialogTitle className="truncate">محادثة مع {targetUser?.name || 'مستخدم'}</DialogTitle>
+                <DialogTitle className="truncate">
+                  {isGroup ? `محادثة مجموعة: ${modalTitle}` : `محادثة مع ${modalTitle}`}
+                </DialogTitle>
               </div>
             </div>
             <Button
@@ -157,6 +163,9 @@ export const ChatModal = ({ isOpen, onClose, currentUser, targetUser, messages, 
               const isCurrentSender = msg.senderId === currentUser?.uid;
               const isEditable = isTeacher;
 
+              // For group chats, we want to show the sender's avatar and name if it's not the current user
+              const senderName = msg.senderName || (isGroup && !isCurrentSender ? 'عضو' : targetUser?.name);
+
               return (
                 <div
                   key={msg.id}
@@ -165,48 +174,54 @@ export const ChatModal = ({ isOpen, onClose, currentUser, targetUser, messages, 
                 >
                   {!isCurrentSender && (
                     <Avatar className="h-8 w-8 self-start">
-                      <AvatarFallback>{targetUser?.name ? getInitials(targetUser.name) : <UserCircle />}</AvatarFallback>
+                      <AvatarFallback>{senderName ? getInitials(senderName) : <UserCircle />}</AvatarFallback>
                     </Avatar>
                   )}
 
-                  <div
-                    className={`relative max-w-[90%] sm:max-w-[80%] md:max-w-[70%] p-3 rounded-lg shadow cursor-pointer group-hover:bg-opacity-90 ${isCurrentSender
-                      ? 'bg-gradient-to-r from-blue-500 to-sky-500 text-white rounded-br-none'
-                      : 'bg-white text-gray-800 border rounded-bl-none'
-                      }`}
-                  >
-                    {editingMessageId === msg.id ? (
-                      <>
-                        <Textarea
-                          rows={2}
-                          className="text-sm text-black mb-1"
-                          value={editingMessageText}
-                          onChange={(e) => setEditingMessageText(e.target.value)}
-                        />
-                        <Button size="xs" variant="secondary" onClick={saveEditedMessage} className="mt-1">
-                          <Save className="w-4 h-4 mr-1" /> حفظ
-                        </Button>
-                      </>
-                    ) : (
-                      <>
-                        <p className="text-sm whitespace-pre-wrap break-words pr-6">{msg.message}</p>
-                        {msg.edited && <span className="text-[10px] text-yellow-300 ml-1">(معدلة)</span>}
-                        <p className="text-xs mt-1 text-right">{formatMessageTimestamp(msg.timestamp)}</p>
-                        {isEditable && (
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="absolute top-1 left-1 text-white hover:text-yellow-300 opacity-0 group-hover:opacity-100 transition"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleEditMessage(msg.id, msg.message);
-                            }}
-                          >
-                            <Pencil className="w-4 h-4" />
-                          </Button>
-                        )}
-                      </>
+                  <div className="flex flex-col max-w-[90%] sm:max-w-[80%] md:max-w-[70%]">
+                    {/* Show sender name in group chat for received messages */}
+                    {isGroup && !isCurrentSender && (
+                      <span className="text-[10px] text-gray-500 mb-1 mr-1">{senderName}</span>
                     )}
+                    <div
+                      className={`relative w-full p-3 rounded-lg shadow cursor-pointer group-hover:bg-opacity-90 ${isCurrentSender
+                        ? 'bg-gradient-to-r from-blue-500 to-sky-500 text-white rounded-br-none'
+                        : 'bg-white text-gray-800 border rounded-bl-none'
+                        }`}
+                    >
+                      {editingMessageId === msg.id ? (
+                        <>
+                          <Textarea
+                            rows={2}
+                            className="text-sm text-black mb-1"
+                            value={editingMessageText}
+                            onChange={(e) => setEditingMessageText(e.target.value)}
+                          />
+                          <Button size="xs" variant="secondary" onClick={saveEditedMessage} className="mt-1">
+                            <Save className="w-4 h-4 mr-1" /> حفظ
+                          </Button>
+                        </>
+                      ) : (
+                        <>
+                          <p className="text-sm whitespace-pre-wrap break-words pr-6">{msg.message}</p>
+                          {msg.edited && <span className="text-[10px] text-yellow-300 ml-1">(معدلة)</span>}
+                          <p className="text-xs mt-1 text-right">{formatMessageTimestamp(msg.timestamp)}</p>
+                          {isEditable && (
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="absolute top-1 left-1 text-white hover:text-yellow-300 opacity-0 group-hover:opacity-100 transition"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleEditMessage(msg.id, msg.message);
+                              }}
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </Button>
+                          )}
+                        </>
+                      )}
+                    </div>
                   </div>
 
                   {isCurrentSender && (
