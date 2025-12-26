@@ -5,13 +5,15 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { MessageCircle, Search, Users, Send, Loader2 } from 'lucide-react';
+import { MessageCircle, Search, Users, Send, Loader2, Users2 } from 'lucide-react';
 import { ChatModal } from '@/components/common/ChatModal';
 import {
   getAvailableStudents,
   getUserConversations,
   getMessagesBetweenUsers,
-  sendStudentMessage
+  sendStudentMessage,
+  sendGroupMessage,
+  getGroupMessages
 } from '@/lib/messageService';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/components/ui/use-toast';
@@ -26,9 +28,15 @@ export const StudentMessaging = () => {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [messagesLoading, setMessagesLoading] = useState(false);
+
+  // Group Chat State
+  const [isGroupChatOpen, setIsGroupChatOpen] = useState(false);
+  const [groupMessages, setGroupMessages] = useState([]);
+
   const [unsubscribeFunctions, setUnsubscribeFunctions] = useState({
     conversations: null,
-    messages: null
+    messages: null,
+    groupMessages: null
   });
 
   // تنظيف الاشتراكات عند إلغاء التحميل
@@ -196,6 +204,36 @@ export const StudentMessaging = () => {
     return unsubscribeMessages;
   }, [currentUser?.uid, unsubscribeFunctions]);
 
+  const handleOpenGroupChat = useCallback(() => {
+    if (!currentUser?.group) {
+      toast({
+        title: "تنبيه",
+        description: "أنت غير منضم لأي مجموعة حالياً",
+        variant: "warning"
+      });
+      return;
+    }
+
+    setIsGroupChatOpen(true);
+    setMessagesLoading(true);
+
+    // Clean previous
+    if (unsubscribeFunctions.groupMessages) {
+      unsubscribeFunctions.groupMessages();
+    }
+
+    const unsubscribe = getGroupMessages(currentUser.group, (msgs) => {
+      setGroupMessages(msgs || []);
+      setMessagesLoading(false);
+    });
+
+    setUnsubscribeFunctions(prev => ({
+      ...prev,
+      groupMessages: unsubscribe
+    }));
+
+  }, [currentUser]);
+
   const handleSendMessage = useCallback(async (message) => {
     if (!selectedStudent?.id || !currentUser?.uid || !message?.trim()) {
       toast({
@@ -229,6 +267,28 @@ export const StudentMessaging = () => {
       });
     }
   }, [selectedStudent, currentUser, getUserName]);
+
+  const handleSendGroupMessage = useCallback(async (message) => {
+    if (!currentUser?.group || !message?.trim()) return;
+
+    try {
+      const senderName = getUserName(currentUser);
+      await sendGroupMessage(
+        currentUser.group,
+        currentUser.uid,
+        senderName,
+        'student',
+        message.trim()
+      );
+    } catch (error) {
+      console.error('Error sending group message:', error);
+      toast({
+        title: "خطأ",
+        description: "فشل إرسال الرسالة للمجموعة",
+        variant: "destructive"
+      });
+    }
+  }, [currentUser, getUserName]);
 
   const formatLastMessageTime = useCallback((timestamp) => {
     if (!timestamp) return '';
@@ -281,6 +341,16 @@ export const StudentMessaging = () => {
     }
   }, [unsubscribeFunctions]);
 
+  const handleCloseGroupChat = useCallback(() => {
+    setIsGroupChatOpen(false);
+    setGroupMessages([]);
+
+    if (unsubscribeFunctions.groupMessages) {
+      unsubscribeFunctions.groupMessages();
+      setUnsubscribeFunctions(prev => ({ ...prev, groupMessages: null }));
+    }
+  }, [unsubscribeFunctions]);
+
   if (!currentUser) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -312,6 +382,27 @@ export const StudentMessaging = () => {
           <span>{availableStudents.length} طالب من مجموعتك</span>
         </Badge>
       </div>
+
+      {/* Group Chat Card */}
+      {currentUser.group && (
+        <Card className="glass-effect border-0 shadow-xl bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-100">
+          <CardContent className="p-4 flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-blue-100 rounded-full text-blue-600">
+                <Users2 className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="font-bold text-lg text-blue-900">مجموعة الصف ({currentUser.group})</h3>
+                <p className="text-sm text-blue-700">تواصل مع جميع طلاب مجموعتك ومعلمك في مكان واحد</p>
+              </div>
+            </div>
+            <Button onClick={handleOpenGroupChat} className="bg-blue-600 hover:bg-blue-700 text-white">
+              <MessageCircle className="w-4 h-4 ml-2" />
+              فتح المحادثة الجماعية
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid lg:grid-cols-2 gap-6">
         {/* قائمة المحادثات الحالية */}
@@ -446,7 +537,7 @@ export const StudentMessaging = () => {
         </Card>
       </div>
 
-      {/* نافذة المحادثة */}
+      {/* نافذة المحادثة الفردية */}
       {isChatOpen && selectedStudent && (
         <ChatModal
           isOpen={isChatOpen}
@@ -457,6 +548,21 @@ export const StudentMessaging = () => {
           onSendMessage={handleSendMessage}
           isLoading={messagesLoading}
           targetUserName={getUserName(selectedStudent)}
+        />
+      )}
+
+      {/* نافذة المحادثة الجماعية */}
+      {isGroupChatOpen && (
+        <ChatModal
+          isOpen={isGroupChatOpen}
+          onClose={handleCloseGroupChat}
+          currentUser={currentUser}
+          targetUser={null} // لا يوجد مستخدم مستهدف معين
+          messages={groupMessages}
+          onSendMessage={handleSendGroupMessage}
+          isLoading={messagesLoading}
+          isGroup={true}
+          groupName={currentUser.group}
         />
       )}
     </motion.div>
