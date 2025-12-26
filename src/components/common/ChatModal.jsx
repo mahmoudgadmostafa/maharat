@@ -104,7 +104,7 @@ export const ChatModal = ({ isOpen, onClose, currentUser, targetUser, messages, 
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="w-full max-w-[100vw] max-h-[100vh] h-[100vh] sm:max-w-lg sm:h-[85vh] sm:max-h-[85vh] md:max-w-2xl flex flex-col p-0 m-0 sm:m-4 overflow-auto sm:rounded-lg">
+      <DialogContent className="w-screen max-w-[100vw] max-h-[100vh] h-[100vh] sm:w-auto sm:max-w-lg sm:h-[85vh] sm:max-h-[85vh] md:max-w-2xl flex flex-col p-0 m-0 sm:m-4 overflow-auto sm:rounded-lg !left-0 !right-0 !translate-x-0 sm:!left-[50%] sm:!right-auto sm:!translate-x-[-50%]">
         <DialogHeader className="p-3 sm:p-4 border-b flex-shrink-0 sticky top-0 bg-white z-10">
           <div className="flex items-center justify-between w-full">
             <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -226,22 +226,22 @@ export const ChatModal = ({ isOpen, onClose, currentUser, targetUser, messages, 
           </div>
         </ScrollArea>
 
-        <DialogFooter className="p-3 sm:p-4 border-t flex-shrink-0 sticky bottom-0 bg-white z-10">
-          <div className="flex w-full items-center gap-2">
+        <DialogFooter className="p-2 sm:p-3 md:p-4 border-t flex-shrink-0 sticky bottom-0 bg-white z-10">
+          <div className="flex w-full items-center gap-1 sm:gap-2">
             <Textarea
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
               placeholder="اكتب رسالتك هنا..."
-              className="flex-grow resize-none text-base sm:text-sm"
+              className="flex-grow resize-none text-sm sm:text-base"
               rows={2}
               onKeyPress={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
+                  e.preventDefault()
                   handleSendMessage();
                 }
               }}
             />
-            <Button onClick={handleSendMessage} size="icon" className="bg-gradient-to-r from-blue-500 to-sky-500">
+            <Button onClick={handleSendMessage} size="icon" className="bg-gradient-to-r from-blue-500 to-sky-500 flex-shrink-0">
               <Send className="h-5 w-5" />
             </Button>
           </div>
