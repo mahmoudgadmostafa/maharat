@@ -123,27 +123,27 @@ const QuestionsAccess = ({ questionsUrl, lessonId, isVisible = true }) => {
   return (
     <Card className="glass-effect-alt border-0 shadow-lg">
       <CardHeader className="pb-3">
-        <CardTitle className="flex items-center justify-between">
+        <CardTitle className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <BookOpen className="w-6 h-6 text-blue-600" />
-            <span className="text-lg">أسئلة الدرس</span>
+            <BookOpen className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" />
+            <span className="text-base sm:text-lg">أسئلة الدرس</span>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2 w-full sm:w-auto">
             <Button
               variant="outline"
               size="sm"
               onClick={handleToggleExpanded}
-              className="glass-button-alt"
+              className="glass-button-alt min-h-[36px] flex-1 sm:flex-none"
             >
               {isExpanded ? (
                 <>
-                  <EyeOff className="w-4 h-4 ml-1" />
-                  إخفاء
+                  <EyeOff className="w-3.5 h-3.5 sm:w-4 sm:h-4 ml-1" />
+                  <span className="text-xs sm:text-sm">إخفاء</span>
                 </>
               ) : (
                 <>
-                  <Eye className="w-4 h-4 ml-1" />
-                  عرض
+                  <Eye className="w-3.5 h-3.5 sm:w-4 sm:h-4 ml-1" />
+                  <span className="text-xs sm:text-sm">عرض</span>
                 </>
               )}
             </Button>
@@ -151,10 +151,10 @@ const QuestionsAccess = ({ questionsUrl, lessonId, isVisible = true }) => {
               variant="outline"
               size="sm"
               onClick={handleQuestionsAccess}
-              className="glass-button-alt"
+              className="glass-button-alt min-h-[36px] flex-1 sm:flex-none"
             >
-              <ExternalLink className="w-4 h-4 ml-1" />
-              فتح خارجي
+              <ExternalLink className="w-3.5 h-3.5 sm:w-4 sm:h-4 ml-1" />
+              <span className="text-xs sm:text-sm">فتح خارجي</span>
             </Button>
             <Button
               variant={isCompleted ? "success" : "default"}
@@ -165,17 +165,17 @@ const QuestionsAccess = ({ questionsUrl, lessonId, isVisible = true }) => {
                 showMotivation(MOTIVATION_TYPES.QUIZ_COMPLETE);
               }}
               disabled={!isUnlocked || isCompleted}
-              className={`${isCompleted ? 'bg-green-600 hover:bg-green-700' : 'bg-blue-600 hover:bg-blue-700'} text-white shadow-sm transition-all duration-300 disabled:opacity-50 disabled:grayscale`}
+              className={`${isCompleted ? 'bg-green-600 hover:bg-green-700' : 'bg-blue-600 hover:bg-blue-700'} text-white shadow-sm transition-all duration-300 disabled:opacity-50 disabled:grayscale min-h-[36px] flex-1 sm:flex-none`}
             >
               {isCompleted ? (
                 <>
-                  <CheckCircle className="w-4 h-4 ml-1" />
-                  أنهيت الاختبار ✓
+                  <CheckCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 ml-1" />
+                  <span className="text-xs sm:text-sm">أنهيت الاختبار ✓</span>
                 </>
               ) : (
                 <>
-                  <CheckSquare className="w-4 h-4 ml-1" />
-                  أنهيت الاختبار
+                  <CheckSquare className="w-3.5 h-3.5 sm:w-4 sm:h-4 ml-1" />
+                  <span className="text-xs sm:text-sm">أنهيت الاختبار</span>
                 </>
               )}
             </Button>
@@ -185,7 +185,7 @@ const QuestionsAccess = ({ questionsUrl, lessonId, isVisible = true }) => {
 
       {isExpanded && (
         <CardContent className="pt-0">
-          <div className="border rounded-lg overflow-hidden bg-white" style={{ height: '600px' }}>
+          <div className="border rounded-lg overflow-hidden bg-white" style={{ height: 'clamp(400px, 60vh, 600px)' }}>
             <iframe
               src={processedUrl}
               width="100%"
