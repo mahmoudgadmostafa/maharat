@@ -19,6 +19,7 @@ export const TeacherLessonsManager = ({ lessons, onLessonsUpdate }) => {
     title: '',
     videoUrl: '',
     pdfUrl: '',
+    infographicUrl: '',
     quizUrl: '',
     learningOutcomes: []
   });
@@ -57,14 +58,15 @@ export const TeacherLessonsManager = ({ lessons, onLessonsUpdate }) => {
           description: "تم إضافة الدرس بنجاح",
         });
       }
-      
-      setLessonData({ 
-        lessonNumber: '', 
-        title: '', 
-        videoUrl: '', 
-        pdfUrl: '', 
-        quizUrl: '', 
-        learningOutcomes: [] 
+
+      setLessonData({
+        lessonNumber: '',
+        title: '',
+        videoUrl: '',
+        pdfUrl: '',
+        infographicUrl: '',
+        quizUrl: '',
+        learningOutcomes: []
       });
       setAddLessonOpen(false);
       setEditingLesson(null);
@@ -85,6 +87,7 @@ export const TeacherLessonsManager = ({ lessons, onLessonsUpdate }) => {
       title: lesson.title,
       videoUrl: lesson.videoUrl || '',
       pdfUrl: lesson.pdfUrl || '',
+      infographicUrl: lesson.infographicUrl || '',
       quizUrl: lesson.quizUrl || '',
       learningOutcomes: lesson.learningOutcomes || []
     });
@@ -125,8 +128,8 @@ export const TeacherLessonsManager = ({ lessons, onLessonsUpdate }) => {
     >
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-3xl font-bold gradient-text">إدارة الدروس</h2>
-        <Dialog 
-          open={addLessonOpen} 
+        <Dialog
+          open={addLessonOpen}
           onOpenChange={(open) => {
             try {
               setAddLessonOpen(open);
@@ -136,6 +139,7 @@ export const TeacherLessonsManager = ({ lessons, onLessonsUpdate }) => {
                   title: '',
                   videoUrl: '',
                   pdfUrl: '',
+                  infographicUrl: '',
                   quizUrl: '',
                   learningOutcomes: []
                 });
@@ -173,7 +177,7 @@ export const TeacherLessonsManager = ({ lessons, onLessonsUpdate }) => {
                   id="lessonNumber"
                   type="number"
                   value={lessonData.lessonNumber}
-                  onChange={(e) => setLessonData({...lessonData, lessonNumber: e.target.value})}
+                  onChange={(e) => setLessonData({ ...lessonData, lessonNumber: e.target.value })}
                   required
                   className="mt-1"
                 />
@@ -184,7 +188,7 @@ export const TeacherLessonsManager = ({ lessons, onLessonsUpdate }) => {
                   id="title"
                   type="text"
                   value={lessonData.title}
-                  onChange={(e) => setLessonData({...lessonData, title: e.target.value})}
+                  onChange={(e) => setLessonData({ ...lessonData, title: e.target.value })}
                   required
                   className="mt-1"
                 />
@@ -195,7 +199,7 @@ export const TeacherLessonsManager = ({ lessons, onLessonsUpdate }) => {
                   id="videoUrl"
                   type="url"
                   value={lessonData.videoUrl}
-                  onChange={(e) => setLessonData({...lessonData, videoUrl: e.target.value})}
+                  onChange={(e) => setLessonData({ ...lessonData, videoUrl: e.target.value })}
                   className="mt-1"
                   placeholder="https://youtube.com/watch?v=..."
                 />
@@ -206,9 +210,20 @@ export const TeacherLessonsManager = ({ lessons, onLessonsUpdate }) => {
                   id="pdfUrl"
                   type="url"
                   value={lessonData.pdfUrl}
-                  onChange={(e) => setLessonData({...lessonData, pdfUrl: e.target.value})}
+                  onChange={(e) => setLessonData({ ...lessonData, pdfUrl: e.target.value })}
                   className="mt-1"
                   placeholder="https://example.com/file.pdf"
+                />
+              </div>
+              <div>
+                <Label htmlFor="infographicUrl">رابط الإنفوجرافيك</Label>
+                <Input
+                  id="infographicUrl"
+                  type="url"
+                  value={lessonData.infographicUrl}
+                  onChange={(e) => setLessonData({ ...lessonData, infographicUrl: e.target.value })}
+                  className="mt-1"
+                  placeholder="https://example.com/infographic.png"
                 />
               </div>
               <div>
@@ -217,7 +232,7 @@ export const TeacherLessonsManager = ({ lessons, onLessonsUpdate }) => {
                   id="quizUrl"
                   type="url"
                   value={lessonData.quizUrl}
-                  onChange={(e) => setLessonData({...lessonData, quizUrl: e.target.value})}
+                  onChange={(e) => setLessonData({ ...lessonData, quizUrl: e.target.value })}
                   className="mt-1"
                   placeholder="https://forms.google.com/..."
                 />
@@ -227,7 +242,7 @@ export const TeacherLessonsManager = ({ lessons, onLessonsUpdate }) => {
                 <textarea
                   id="learningOutcomes"
                   value={lessonData.learningOutcomes.join("\n")}
-                  onChange={(e) => setLessonData({...lessonData, learningOutcomes: e.target.value.split("\n")})}
+                  onChange={(e) => setLessonData({ ...lessonData, learningOutcomes: e.target.value.split("\n") })}
                   className="mt-1 flex h-20 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                   placeholder="اكتب نواتج التعلم هنا، كل ناتج في سطر جديد."
                 />
@@ -242,13 +257,13 @@ export const TeacherLessonsManager = ({ lessons, onLessonsUpdate }) => {
 
       <div className="grid gap-4">
         {lessons.length === 0 ? (
-            <Card className="glass-effect border-0 shadow-xl">
-              <CardContent className="text-center py-12">
-                <BookOpen className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-gray-600 mb-2">لا توجد دروس مضافة بعد</h3>
-                <p className="text-gray-500">انقر على "إضافة درس جديد" لبدء إنشاء المحتوى.</p>
-              </CardContent>
-            </Card>
+          <Card className="glass-effect border-0 shadow-xl">
+            <CardContent className="text-center py-12">
+              <BookOpen className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-xl font-semibold text-gray-600 mb-2">لا توجد دروس مضافة بعد</h3>
+              <p className="text-gray-500">انقر على "إضافة درس جديد" لبدء إنشاء المحتوى.</p>
+            </CardContent>
+          </Card>
         ) : (
           lessons.map((lesson, index) => (
             <motion.div
@@ -295,7 +310,7 @@ export const TeacherLessonsManager = ({ lessons, onLessonsUpdate }) => {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid md:grid-cols-3 gap-4 text-sm">
+                  <div className="grid md:grid-cols-4 gap-4 text-sm">
                     <div>
                       <span className="font-medium">فيديو: </span>
                       {lesson.videoUrl ? (
@@ -307,7 +322,15 @@ export const TeacherLessonsManager = ({ lessons, onLessonsUpdate }) => {
                     <div>
                       <span className="font-medium">ملف PDF: </span>
                       {lesson.pdfUrl ? (
-                         <a href={lesson.pdfUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline truncate block" title={lesson.pdfUrl}>متوفر</a>
+                        <a href={lesson.pdfUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline truncate block" title={lesson.pdfUrl}>متوفر</a>
+                      ) : (
+                        <span className="text-gray-500">غير متوفر</span>
+                      )}
+                    </div>
+                    <div>
+                      <span className="font-medium">إنفوجرافيك: </span>
+                      {lesson.infographicUrl ? (
+                        <a href={lesson.infographicUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline truncate block" title={lesson.infographicUrl}>متوفر</a>
                       ) : (
                         <span className="text-gray-500">غير متوفر</span>
                       )}
@@ -321,7 +344,7 @@ export const TeacherLessonsManager = ({ lessons, onLessonsUpdate }) => {
                       )}
                     </div>
                     {lesson.learningOutcomes && lesson.learningOutcomes.length > 0 && (
-                      <div className="md:col-span-3">
+                      <div className="md:col-span-4">
                         <span className="font-medium">نواتج التعلم: </span>
                         <ul className="list-disc list-inside text-gray-700">
                           {lesson.learningOutcomes.map((outcome, idx) => (
