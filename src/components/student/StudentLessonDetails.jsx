@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { PlayCircle, FileText, MessageSquare, CheckSquare, Award, ExternalLink, BookOpen } from 'lucide-react';
 import VideoPlayer from '@/components/VideoPlayer';
 import PDFViewer from '@/components/PDFViewer';
+import InfographicViewer from '@/components/InfographicViewer';
 import QuestionsAccess from '@/components/QuestionsAccess';
 import ExamAccess from '@/components/ExamAccess';
 import { useMotivation } from '@/contexts/MotivationContext';
@@ -62,13 +63,16 @@ const StudentLessonDetails = ({
             {lesson.pdfUrl && (
               <PDFViewer pdfUrl={lesson.pdfUrl} lessonId={lesson.id} />
             )}
+            {lesson.infographicUrl && (
+              <InfographicViewer infographicUrl={lesson.infographicUrl} lessonId={lesson.id} />
+            )}
             {(lesson.quizUrl || lesson.questionsUrl) && (
               <QuestionsAccess questionsUrl={lesson.quizUrl || lesson.questionsUrl} lessonId={lesson.id} />
             )}
           </div>
 
-          {!lesson.pdfUrl && !lesson.quizUrl && !lesson.questionsUrl && !lesson.videoUrl && (
-            <p className="text-center text-gray-500 py-6">لا يوجد محتوى إضافي (PDF أو أسئلة) لهذا الدرس حاليًا.</p>
+          {!lesson.pdfUrl && !lesson.infographicUrl && !lesson.quizUrl && !lesson.questionsUrl && !lesson.videoUrl && (
+            <p className="text-center text-gray-500 py-6">لا يوجد محتوى إضافي (PDF أو إنفوجرافيك أو أسئلة) لهذا الدرس حاليًا.</p>
           )}
 
         </CardContent>
