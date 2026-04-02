@@ -6,6 +6,7 @@ import { PlayCircle, FileText, MessageSquare, CheckSquare, Award, ExternalLink, 
 import VideoPlayer from '@/components/VideoPlayer';
 import PDFViewer from '@/components/PDFViewer';
 import InfographicViewer from '@/components/InfographicViewer';
+import ActivityViewer from '@/components/ActivityViewer';
 import QuestionsAccess from '@/components/QuestionsAccess';
 import ExamAccess from '@/components/ExamAccess';
 import { useMotivation } from '@/contexts/MotivationContext';
@@ -38,6 +39,22 @@ const StudentLessonDetails = ({
     showMotivation(MOTIVATION_TYPES.LESSON_COMPLETE);
   };
 
+  const getUrlsList = (arr, str) => {
+    if (arr && Array.isArray(arr) && arr.length > 0) return arr;
+    if (str && typeof str === 'string' && str.trim() !== '') return [str];
+    return [];
+  };
+
+  const videoUrls = getUrlsList(lesson.videoUrls, lesson.videoUrl);
+  const pdfUrls = getUrlsList(lesson.pdfUrls, lesson.pdfUrl);
+  const infographicUrls = getUrlsList(lesson.infographicUrls, lesson.infographicUrl);
+  const activityUrls = getUrlsList(lesson.activityUrls, lesson.activityUrl);
+  // Support for backward compatibility with `questionsUrl`
+  const quizUrlsList = lesson.quizUrls && lesson.quizUrls.length > 0 ? lesson.quizUrls : (lesson.quizUrl ? [lesson.quizUrl] : (lesson.questionsUrl ? [lesson.questionsUrl] : []));
+  const quizUrls = getUrlsList(quizUrlsList, null);
+
+  const hasAnyContent = videoUrls.length > 0 || pdfUrls.length > 0 || infographicUrls.length > 0 || activityUrls.length > 0 || quizUrls.length > 0;
+
   return (
     <div className="space-y-6">
       <Card className="glass-effect-alt border-0 shadow-xl overflow-hidden">
@@ -48,31 +65,43 @@ const StudentLessonDetails = ({
           )}
         </CardHeader>
         <CardContent className="pt-6 space-y-6">
-          {lesson.videoUrl && getYouTubeEmbedUrl(lesson.videoUrl) ? (
-            <div>
-              <h3 className="text-xl font-semibold mb-2 flex items-center gap-2"><PlayCircle className="text-red-500" /> مشاهدة الفيديو</h3>
-              <VideoPlayer videoUrl={lesson.videoUrl} lessonId={lesson.id} />
+          {videoUrls.length > 0 ? (
+            <div className="space-y-6">
+              {videoUrls.map((vUrl, idx) => (
+                <div key={`vid-${idx}`}>
+                  <h3 className="text-xl font-semibold mb-2 flex items-center gap-2">
+                    <PlayCircle className="text-red-500" />
+                    {videoUrls.length > 1 ? `مشاهدة الفيديو ${idx + 1}` : 'مشاهدة الفيديو'}
+                  </h3>
+                  {getYouTubeEmbedUrl(vUrl) ? (
+                    <VideoPlayer videoUrl={vUrl} lessonId={lesson.id} index={idx} />
+                  ) : (
+                    <p className="text-orange-600">رابط الفيديو غير صحيح أو غير مدعوم حاليًا. <a href={vUrl} target="_blank" rel="noopener noreferrer" className="underline">جرب فتحه مباشرة</a>.</p>
+                  )}
+                </div>
+              ))}
             </div>
-          ) : lesson.videoUrl ? (
-            <p className="text-orange-600">رابط الفيديو غير صحيح أو غير مدعوم حاليًا. <a href={lesson.videoUrl} target="_blank" rel="noopener noreferrer" className="underline">جرب فتحه مباشرة</a>.</p>
           ) : (
             <p className="text-gray-500">لا يوجد فيديو لهذا الدرس.</p>
           )}
 
           <div className="space-y-4">
-            {lesson.pdfUrl && (
-              <PDFViewer pdfUrl={lesson.pdfUrl} lessonId={lesson.id} />
-            )}
-            {lesson.infographicUrl && (
-              <InfographicViewer infographicUrl={lesson.infographicUrl} lessonId={lesson.id} />
-            )}
-            {(lesson.quizUrl || lesson.questionsUrl) && (
-              <QuestionsAccess questionsUrl={lesson.quizUrl || lesson.questionsUrl} lessonId={lesson.id} />
-            )}
+            {pdfUrls.map((pUrl, idx) => (
+              <PDFViewer key={`pdf-${idx}`} pdfUrl={pUrl} lessonId={lesson.id} index={idx} />
+            ))}
+            {infographicUrls.map((iUrl, idx) => (
+              <InfographicViewer key={`info-${idx}`} infographicUrl={iUrl} lessonId={lesson.id} index={idx} />
+            ))}
+            {activityUrls.map((aUrl, idx) => (
+              <ActivityViewer key={`act-${idx}`} activityUrl={aUrl} lessonId={lesson.id} index={idx} />
+            ))}
+            {quizUrls.map((qUrl, idx) => (
+              <QuestionsAccess key={`quiz-${idx}`} questionsUrl={qUrl} lessonId={lesson.id} index={idx} />
+            ))}
           </div>
 
-          {!lesson.pdfUrl && !lesson.infographicUrl && !lesson.quizUrl && !lesson.questionsUrl && !lesson.videoUrl && (
-            <p className="text-center text-gray-500 py-6">لا يوجد محتوى إضافي (PDF أو إنفوجرافيك أو أسئلة) لهذا الدرس حاليًا.</p>
+          {!hasAnyContent && (
+            <p className="text-center text-gray-500 py-6">لا يوجد محتوى إضافي (فيديو أو PDF أو إنفوجرافيك أو نشاط أو أسئلة) لهذا الدرس حاليًا.</p>
           )}
 
         </CardContent>

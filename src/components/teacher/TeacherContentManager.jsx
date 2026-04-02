@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { TeacherLessonsManager } from '@/components/teacher/TeacherLessonsManager';
 import { TeacherFinalExamManager } from '@/components/teacher/TeacherFinalExamManager';
 
-export const TeacherContentManager = ({ lessons, onLessonsUpdate, platformSettings, onSettingsUpdate }) => {
+export const TeacherContentManager = ({ lessons, students, onLessonsUpdate, platformSettings, onSettingsUpdate }) => {
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -14,6 +14,7 @@ export const TeacherContentManager = ({ lessons, onLessonsUpdate, platformSettin
     >
       <TeacherLessonsManager 
         lessons={lessons} 
+        students={students}
         onLessonsUpdate={onLessonsUpdate} 
       />
       <TeacherFinalExamManager

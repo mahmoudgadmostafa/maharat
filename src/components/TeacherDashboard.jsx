@@ -545,6 +545,7 @@ const TeacherDashboard = memo(() => {
             <Suspense fallback={<LoadingSpinner />}>
               <TeacherContentManager
                 lessons={lessons}
+                students={students}
                 onLessonsUpdate={fetchStaticData}
                 platformSettings={platformSettings}
                 onSettingsUpdate={handleSettingsUpdate}

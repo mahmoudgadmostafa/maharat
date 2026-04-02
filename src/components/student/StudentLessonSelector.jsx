@@ -1,7 +1,7 @@
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Award } from 'lucide-react';
+import { Award, Compass } from 'lucide-react';
 
 const StudentLessonSelector = ({ lessons, selectedLessonId, onLessonClick, studentProgress }) => {
   // دالة للتحقق من استكمال جميع الدروس السابقة
@@ -69,6 +69,21 @@ const StudentLessonSelector = ({ lessons, selectedLessonId, onLessonClick, stude
                 <li key={idx} className="text-sm">{outcome}</li>
               ))}
             </ul>
+          </div>
+        )}
+        
+        {/* عرض خطوات السير في الدرس للمحدد */}
+        {selectedLesson && selectedLesson.lessonSteps && selectedLesson.lessonSteps.length > 0 && (
+          <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+            <h3 className="text-lg font-semibold mb-3 flex items-center gap-2 text-blue-700">
+              <Compass className="text-blue-500" /> 
+              خطواتك نحو إتقان الدرس
+            </h3>
+            <ol className="list-decimal list-inside text-gray-700 space-y-2">
+              {selectedLesson.lessonSteps.map((step, idx) => (
+                <li key={idx} className="text-sm">{step}</li>
+              ))}
+            </ol>
           </div>
         )}
       </CardContent>

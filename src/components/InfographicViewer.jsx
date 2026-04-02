@@ -9,7 +9,7 @@ import { MOTIVATION_TYPES } from '@/lib/motivationMessages';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
-const InfographicViewer = ({ infographicUrl, lessonId, className = "" }) => {
+const InfographicViewer = ({ infographicUrl, lessonId, index = 0, className = "" }) => {
     const { currentUser } = useAuth();
     const studentId = currentUser?.uid;
     const [isExpanded, setIsExpanded] = useState(false);
@@ -22,7 +22,7 @@ const InfographicViewer = ({ infographicUrl, lessonId, className = "" }) => {
     const saveProgress = useCallback(async (unlocked, completed) => {
         if (!studentId || !lessonId) return;
         try {
-            const progressRef = doc(db, 'contentProgress', `${studentId}_${lessonId}_infographic`);
+            const progressRef = doc(db, 'contentProgress', `${studentId}_${lessonId}_infographic${index > 0 ? `_${index}` : ''}`);
             await setDoc(progressRef, {
                 isUnlocked: unlocked,
                 isCompleted: completed,
@@ -44,7 +44,7 @@ const InfographicViewer = ({ infographicUrl, lessonId, className = "" }) => {
             setIsExpanded(false);
 
             try {
-                const progressRef = doc(db, 'contentProgress', `${studentId}_${lessonId}_infographic`);
+                const progressRef = doc(db, 'contentProgress', `${studentId}_${lessonId}_infographic${index > 0 ? `_${index}` : ''}`);
                 const snap = await getDoc(progressRef);
                 if (snap.exists()) {
                     const data = snap.data();

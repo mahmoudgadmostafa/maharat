@@ -27,7 +27,7 @@ const StudentAchievements = lazy(() => import('./student/StudentAchievements'));
 const StudentDashboard = memo(() => {
   const { logout, currentUser } = useAuth();
   const [userData, setUserData] = useState(null);
-  const [lessons, setLessons] = useState([]);
+  const [allLessons, setAllLessons] = useState([]);
   const [selectedLesson, setSelectedLesson] = useState(null);
   const [loading, setLoading] = useState(true);
   const [studentProgress, setStudentProgress] = useState({ completedLessons: [] });
@@ -55,7 +55,7 @@ const StudentDashboard = memo(() => {
 
       const lessonsSnapshot = await getDocs(collection(db, 'lessons'));
       const lessonsData = lessonsSnapshot.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (a.lessonNumber || 0) - (b.lessonNumber || 0));
-      setLessons(lessonsData);
+      setAllLessons(lessonsData);
       return { userData: fetchedUserData, lessonsData };
     } catch (error) {
       console.error('Error fetching lessons or user data:', error);
@@ -157,8 +157,18 @@ const StudentDashboard = memo(() => {
     };
   }, [currentUser, fetchLessonsAndUserData]);
 
+  const availableLessons = useMemo(() => {
+    if (!userData) return [];
+    const userGroup = userData.group || 'بدون مجموعة';
+    return allLessons.filter(lesson => {
+      const groups = lesson.targetGroups === undefined ? ['الكل'] : lesson.targetGroups;
+      if (groups.includes('الكل')) return true;
+      return groups.includes(userGroup);
+    });
+  }, [allLessons, userData]);
+
   const handleLessonClick = (lessonId) => {
-    const lesson = lessons.find(l => l.id === lessonId);
+    const lesson = availableLessons.find(l => l.id === lessonId);
     setSelectedLesson(lesson);
   };
 
@@ -180,7 +190,7 @@ const StudentDashboard = memo(() => {
       });
 
       // إظهار الإيموشن الاحترافي الخاص بالدرس
-      const lessonIndex = lessons.findIndex(l => l.id === lessonId);
+      const lessonIndex = availableLessons.findIndex(l => l.id === lessonId);
       const achievement = ACHIEVEMENT_EMOJIS[lessonIndex % ACHIEVEMENT_EMOJIS.length];
       showMotivation({
         emoji: achievement.emoji,
@@ -236,8 +246,8 @@ const StudentDashboard = memo(() => {
     setModalState({ isOpen: false, url: '', title: '', resourceType: '' });
   };
 
-  const totalLessons = lessons.length;
-  const completedLessonsCount = studentProgress.completedLessons?.length || 0;
+  const totalLessons = availableLessons.length;
+  const completedLessonsCount = availableLessons.filter(l => studentProgress.completedLessons?.includes(l.id)).length;
   const overallProgress = useMemo(() => {
     return totalLessons > 0 ? Math.round((completedLessonsCount / totalLessons) * 100) : 0;
   }, [totalLessons, completedLessonsCount]);
@@ -296,7 +306,7 @@ const StudentDashboard = memo(() => {
 
             <Suspense fallback={<LoadingSpinner />}>
               <StudentAchievements
-                lessons={lessons}
+                lessons={availableLessons}
                 completedLessonIds={studentProgress.completedLessons}
               />
             </Suspense>
@@ -312,7 +322,7 @@ const StudentDashboard = memo(() => {
               >
                 <Suspense fallback={<LoadingSpinner />}>
                   <StudentLessonSelector
-                    lessons={lessons}
+                    lessons={availableLessons}
                     selectedLessonId={selectedLesson?.id}
                     onLessonClick={handleLessonClick}
                     studentProgress={studentProgress}

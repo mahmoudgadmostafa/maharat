@@ -9,7 +9,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Clock, Trophy, Play, Pause, RotateCcw, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
-const VideoPlayer = ({ videoUrl, lessonId, className = "" }) => {
+const VideoPlayer = ({ videoUrl, lessonId, index = 0, className = "" }) => {
   const containerRef = useRef(null);
   const videoRef = useRef(null);
   const playerRef = useRef(null);
@@ -58,7 +58,7 @@ const VideoPlayer = ({ videoUrl, lessonId, className = "" }) => {
 
     try {
       lastTimeRef.current = currentTime;
-      const progressRef = doc(db, 'videoProgress', `${studentId}_${lessonId}`);
+      const progressRef = doc(db, 'videoProgress', `${studentId}_${lessonId}${index > 0 ? `_${index}` : ''}`);
       await setDoc(progressRef, {
         currentTime,
         isCompleted,
@@ -86,7 +86,7 @@ const VideoPlayer = ({ videoUrl, lessonId, className = "" }) => {
       lastTimeRef.current = 0;
 
       try {
-        const progressRef = doc(db, 'videoProgress', `${studentId}_${lessonId}`);
+        const progressRef = doc(db, 'videoProgress', `${studentId}_${lessonId}${index > 0 ? `_${index}` : ''}`);
         const snap = await getDoc(progressRef);
         if (snap.exists()) {
           const data = snap.data();
@@ -206,7 +206,7 @@ const VideoPlayer = ({ videoUrl, lessonId, className = "" }) => {
       if (playerRef.current) {
         try { playerRef.current.destroy(); } catch (e) { }
       }
-      playerRef.current = new window.YT.Player(`yt-player-${lessonId}`, {
+      playerRef.current = new window.YT.Player(`yt-player-${lessonId}-${index}`, {
         videoId: videoId,
         playerVars: {
           autoplay: 0,
@@ -396,7 +396,7 @@ const VideoPlayer = ({ videoUrl, lessonId, className = "" }) => {
       {/* Cropping Wrapper to hide YouTube branding (titles/logos) */}
       <div className={`w-full h-full relative ${isYouTube ? 'scale-[1.15]' : ''}`}>
         {isYouTube ? (
-          <div id={`yt-player-${lessonId}`} className="w-full h-full"></div>
+          <div id={`yt-player-${lessonId}-${index}`} className="w-full h-full"></div>
         ) : (
           <video
             ref={videoRef}
