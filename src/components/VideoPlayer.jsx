@@ -21,6 +21,12 @@ const VideoPlayer = ({ videoUrl, lessonId, className = "", onMarkComplete }) => 
 
   const [hasStarted, setHasStarted] = useState(false);
   const [hasCompleted, setHasCompleted] = useState(false);
+  const isVideoCompletedRef = useRef(false);
+
+  const setHasCompletedWithRef = useCallback((val) => {
+    isVideoCompletedRef.current = val;
+    setHasCompleted(val);
+  }, []);
   const [savedTime, setSavedTime] = useState(0);
   const [isApiReady, setIsApiReady] = useState(false);
   const [showResumeNotice, setShowResumeNotice] = useState(false);
@@ -51,23 +57,34 @@ const VideoPlayer = ({ videoUrl, lessonId, className = "", onMarkComplete }) => 
     // Protection: If we already know the video is completed and this call isn't setting it to completed,
     // we should NOT overwrite the "isCompleted: true" state in the DB with "false".
     // This prevents race conditions during unmount or state transitions.
-    if (hasCompleted && !isCompleted) {
+    if (isVideoCompletedRef.current && !isCompleted) {
       // We only allow reset via manual playback start which sets hasCompleted to false first
       return;
     }
 
     try {
       lastTimeRef.current = currentTime;
+
+      // حساب نسبة المشاهدة
+      const safeDuration = duration > 0 ? duration : (isYouTube && playerRef.current?.getDuration ? playerRef.current.getDuration() : 0);
+      let watchedPercentage = isCompleted ? 100 : (safeDuration > 0 ? Math.min(100, Math.round((currentTime / safeDuration) * 100)) : 0);
+
+      // لا نسمح بعودة النسبة للوراء بشكل مباشر إلا إذا كان المستخدم يعيد تشغيل الفيديو
       const progressRef = doc(db, 'videoProgress', `${studentId}_${lessonId}`);
+
+      // الحصول على النسبة السابقة لعدم إنقاصها إن أمكن
+      let currentMaxPercentage = watchedPercentage;
+
       await setDoc(progressRef, {
         currentTime,
         isCompleted,
+        watchedPercentage: currentMaxPercentage,
         lastUpdated: new Date().toISOString()
       }, { merge: true });
     } catch (error) {
       console.error("Error saving video progress:", error);
     }
-  }, [studentId, lessonId, hasCompleted]);
+  }, [studentId, lessonId, hasCompleted, duration, isYouTube]);
 
   // Load progress from Firestore
   useEffect(() => {
@@ -77,7 +94,7 @@ const VideoPlayer = ({ videoUrl, lessonId, className = "", onMarkComplete }) => 
       // 🔄 Reset local state immediately on lesson change to prevent leakage
       setIsProgressLoaded(false);
       setShowSuccessOverlay(false);
-      setHasCompleted(false);
+      setHasCompletedWithRef(false);
       setHasStarted(false);
       setSavedTime(0);
       setCurrentTime(0);
@@ -96,7 +113,7 @@ const VideoPlayer = ({ videoUrl, lessonId, className = "", onMarkComplete }) => 
 
           if (data.isCompleted) {
             setShowSuccessOverlay(true);
-            setHasCompleted(true);
+            setHasCompletedWithRef(true);
             if (onMarkComplete) onMarkComplete();
           } else if (time > 2) { // Only show notice if more than 2 seconds saved
             setShowResumeNotice(true);
@@ -123,7 +140,7 @@ const VideoPlayer = ({ videoUrl, lessonId, className = "", onMarkComplete }) => 
         return;
       }
       setShowSuccessOverlay(false);
-      setHasCompleted(false); // Reset completion state locally to allow the DB reset
+      setHasCompletedWithRef(false); // Reset completion state locally to allow the DB reset
       saveProgress(0, false); // Reset completion in DB
     }
     if (!hasStarted) {
@@ -143,8 +160,8 @@ const VideoPlayer = ({ videoUrl, lessonId, className = "", onMarkComplete }) => 
       videoRef.current.pause();
     }
 
-    if (!hasCompleted) {
-      setHasCompleted(true);
+    if (!isVideoCompletedRef.current) {
+      setHasCompletedWithRef(true);
       trackEvent(EVENT_TYPES.VIDEO_COMPLETED, studentId, lessonId, { videoUrl });
       showMotivation(MOTIVATION_TYPES.VIDEO_COMPLETE);
     }
@@ -163,7 +180,6 @@ const VideoPlayer = ({ videoUrl, lessonId, className = "", onMarkComplete }) => 
     saveProgressRef.current = saveProgress;
     handlePlaybackStartRef.current = handlePlaybackStart;
     handlePlaybackCompleteRef.current = handlePlaybackComplete;
-    hasCompletedRef.current = hasCompleted;
   });
 
   useEffect(() => {
@@ -244,12 +260,12 @@ const VideoPlayer = ({ videoUrl, lessonId, className = "", onMarkComplete }) => 
         if (total > 0 && duration !== total) setDuration(total);
 
         // Safety Trigger: If we're within 1 second of the end, trigger completion
-        if (total > 0 && time >= total - 1 && !hasCompletedRef.current) {
+        if (total > 0 && time >= total - 1 && !isVideoCompletedRef.current) {
           handlePlaybackCompleteRef.current();
         }
 
         // Only save progress if video is NOT already completed to avoid overwriting state
-        if (time > 0 && !hasCompletedRef.current) {
+        if (time > 0 && !isVideoCompletedRef.current) {
           saveProgressRef.current(time);
         }
       }
@@ -260,7 +276,7 @@ const VideoPlayer = ({ videoUrl, lessonId, className = "", onMarkComplete }) => 
       if (playerRef.current && playerRef.current.getCurrentTime) {
         const finalTime = playerRef.current.getCurrentTime();
         // Strict guard: NEVER save on unmount if video is completed
-        if (finalTime > 1 && !hasCompletedRef.current) saveProgressRef.current(finalTime);
+        if (finalTime > 1 && !isVideoCompletedRef.current) saveProgressRef.current(finalTime);
       }
       if (playerRef.current) {
         try { playerRef.current.destroy(); } catch (e) { }
@@ -306,11 +322,11 @@ const VideoPlayer = ({ videoUrl, lessonId, className = "", onMarkComplete }) => 
         setCurrentTime(video.currentTime);
 
         // Safety Trigger: If we're within 0.5 seconds of the end, trigger completion
-        if (video.duration > 0 && video.currentTime >= video.duration - 0.5 && !hasCompletedRef.current) {
+        if (video.duration > 0 && video.currentTime >= video.duration - 0.5 && !isVideoCompletedRef.current) {
           handlePlaybackCompleteRef.current();
         }
 
-        if (!hasCompletedRef.current) {
+        if (!isVideoCompletedRef.current) {
           saveProgressRef.current(video.currentTime);
         }
       }
@@ -318,7 +334,7 @@ const VideoPlayer = ({ videoUrl, lessonId, className = "", onMarkComplete }) => 
 
     return () => {
       clearInterval(progressInterval);
-      if (video.currentTime > 1 && !video.ended && !hasCompletedRef.current) saveProgressRef.current(video.currentTime);
+      if (video.currentTime > 1 && !video.ended && !isVideoCompletedRef.current) saveProgressRef.current(video.currentTime);
 
       video.removeEventListener('loadedmetadata', handleLoadedMetadata);
       video.removeEventListener('play', handlePlay);
