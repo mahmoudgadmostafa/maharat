@@ -201,9 +201,8 @@ const TeacherAnalytics = ({
 
         totalCompletedLessons += completedLessonsCount;
 
-        const averageScore = studentScoreCount > 0
-          ? totalStudentScores / studentScoreCount
-          : 0;
+        // حساب النقاط بناءً على إتمام الدروس (5 درجات لكل درس مكتمل)
+        const averageScore = completedLessonsCount * 5;
 
         if (completedLessonsCount > 0) {
           totalScores += averageScore;
@@ -858,6 +857,7 @@ const TeacherAnalytics = ({
                       <TableHead className="text-right border border-gray-300 p-3 font-semibold text-center">فيديو</TableHead>
                       <TableHead className="text-right border border-gray-300 p-3 font-semibold text-center">PDF</TableHead>
                       <TableHead className="text-right border border-gray-300 p-3 font-semibold text-center">أسئلة</TableHead>
+                      <TableHead className="text-center border border-gray-300 p-3 font-semibold">الدرجة الكلية</TableHead>
                       <TableHead className="text-center border border-gray-300 p-3 font-semibold">عدد الأوسمة</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -893,6 +893,11 @@ const TeacherAnalytics = ({
                             {Math.round(student.questionsProgressPercentage)}%
                           </TableCell>
                           <TableCell className="border border-gray-300 p-3 text-center">
+                            <div className="font-bold text-indigo-700">
+                              {student.averageScore} <span className="text-xs text-gray-500 font-normal">نقطة</span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="border border-gray-300 p-3 text-center">
                             <div className="flex items-center justify-center gap-1 font-bold text-yellow-600">
                               <Award className="w-5 h-5" />
                               <span className="text-lg">{student.badgesCount}</span>
@@ -902,7 +907,7 @@ const TeacherAnalytics = ({
                       ))}
                     {analyticsData.studentAnalytics.filter(s => selectedStudentGroup === 'الكل' || s.group === selectedStudentGroup).length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={8} className="text-center py-12 text-gray-500">
+                        <TableCell colSpan={9} className="text-center py-12 text-gray-500">
                           لا يوجد طلاب لعرضهم في هذه المجموعة.
                         </TableCell>
                       </TableRow>

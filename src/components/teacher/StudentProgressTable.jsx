@@ -115,9 +115,8 @@ const StudentProgressTable = ({
       const pdfOpenRate = lessonsWithPdfCount > 0 ? (pdfOpenedLessonsCount / lessonsWithPdfCount) * 100 : (pdfOpenedLessonsCount > 0 ? 100 : 0);
       const questionsAccessRate = lessonsWithQuizCount > 0 ? (questionsAccessedLessonsCount / lessonsWithQuizCount) * 100 : (questionsAccessedLessonsCount > 0 ? 100 : 0);
 
-      const averageScore = studentScoreCount > 0
-        ? totalStudentScores / studentScoreCount
-        : 0;
+      // حساب النقاط بناءً على الدروس المكتملة (5 درجات لكل درس)
+      const averageScore = completedLessons * 5;
 
       // حساب الوقت المقضي (تقديري - لا نملك الأحداث حالياً)
       const totalTimeSpent = completedLessons * 15; // افتراض 15 دقيقة لكل درس
@@ -397,6 +396,12 @@ const StudentProgressTable = ({
                       الأسئلة
                     </div>
                   </TableHead>
+                  <TableHead className="text-right border border-gray-300 p-3 font-semibold">
+                    <div className="flex items-center gap-1">
+                      <Award className="w-4 h-4" />
+                      الدرجة الكلية
+                    </div>
+                  </TableHead>
                   <TableHead className="text-center border border-gray-300 p-3 font-semibold">عدد الأوسمة</TableHead>
                 </TableRow>
               </TableHeader>
@@ -477,6 +482,12 @@ const StudentProgressTable = ({
                             style={{ width: `${student.questionsAccessRate}%` }}
                           ></div>
                         </div>
+                      </div>
+                    </TableCell>
+                    <TableCell className="border border-gray-300 p-3">
+                      <div className="text-center">
+                        <div className="font-bold text-lg text-indigo-600">{student.averageScore}</div>
+                        <div className="text-xs text-gray-500">نقطة</div>
                       </div>
                     </TableCell>
                     <TableCell className="border border-gray-300 p-3">
