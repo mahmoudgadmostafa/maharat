@@ -7,16 +7,92 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Plus, BookOpen, Edit, Trash2, CheckSquare } from 'lucide-react';
+import { Plus, BookOpen, Edit, Trash2, Eye, EyeOff, ChevronDown, ChevronUp, Settings2 } from 'lucide-react';
 import { collection, addDoc, doc, deleteDoc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { toast } from '@/components/ui/use-toast';
+
+// Default component visibility: all visible to everyone
+const DEFAULT_COMPONENT_VISIBILITY = {
+  video: { visible: true, groups: ['الكل'] },
+  pdf: { visible: true, groups: ['الكل'] },
+  infographic: { visible: true, groups: ['الكل'] },
+  activity: { visible: true, groups: ['الكل'] },
+  quiz: { visible: true, groups: ['الكل'] },
+  learningOutcomes: { visible: true, groups: ['الكل'] },
+  lessonSteps: { visible: true, groups: ['الكل'] },
+};
+
+const COMPONENT_LABELS = {
+  video: '🎬 فيديو الدرس',
+  pdf: '📄 ملف PDF',
+  infographic: '🖼️ إنفوجرافيك',
+  activity: '🎯 النشاط التعليمي',
+  quiz: '📝 أسئلة الدرس',
+  learningOutcomes: '🎓 نواتج التعلم',
+  lessonSteps: '📋 خطوات السير',
+};
+
+// Sub-component: Controls visibility for a single lesson component
+const ComponentVisibilityRow = ({ componentKey, label, visibilityConfig, availableGroups, onChange }) => {
+  const { visible, groups } = visibilityConfig;
+
+  const handleToggleVisible = () => {
+    onChange(componentKey, { visible: !visible, groups });
+  };
+
+  const handleGroupToggle = (group) => {
+    const nextGroups = groups.includes(group)
+      ? groups.filter(g => g !== group)
+      : [...groups, group];
+    onChange(componentKey, { visible, groups: nextGroups });
+  };
+
+  return (
+    <div className={`rounded-xl border p-3 transition-all duration-200 ${visible ? 'bg-white border-gray-200' : 'bg-gray-50 border-dashed border-gray-300 opacity-70'}`}>
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-sm font-semibold text-gray-700">{label}</span>
+        <button
+          type="button"
+          onClick={handleToggleVisible}
+          className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1 rounded-full transition-all duration-200 ${visible
+            ? 'bg-green-100 text-green-700 hover:bg-green-200'
+            : 'bg-red-100 text-red-700 hover:bg-red-200'
+            }`}
+        >
+          {visible ? <><Eye className="w-3.5 h-3.5" /> ظاهر</> : <><EyeOff className="w-3.5 h-3.5" /> مخفي</>}
+        </button>
+      </div>
+      {visible && (
+        <div className="flex flex-wrap gap-1.5 mt-1">
+          {availableGroups.map(group => (
+            <button
+              key={group}
+              type="button"
+              onClick={() => handleGroupToggle(group)}
+              className={`text-xs px-2.5 py-1 rounded-full border transition-all duration-150 font-medium ${groups.includes(group)
+                ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                : 'bg-white text-gray-500 border-gray-300 hover:border-blue-400 hover:text-blue-600'
+                }`}
+            >
+              {group}
+            </button>
+          ))}
+          {groups.length === 0 && (
+            <span className="text-xs text-orange-500 italic">⚠ لم تُختر مجموعة — سيظل مخفياً للجميع</span>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
 
 export const TeacherLessonsManager = ({ lessons, students, onLessonsUpdate }) => {
   const availableGroups = ['الكل', ...new Set((students || []).filter(s => s.role === 'student').map(s => s.group).filter(Boolean))];
   const [addLessonOpen, setAddLessonOpen] = useState(false);
   const [editingLesson, setEditingLesson] = useState(null);
   const [selectedLessonId, setSelectedLessonId] = useState("all");
+  const [showVisibilityFor, setShowVisibilityFor] = useState(null);
   const [lessonData, setLessonData] = useState({
     lessonNumber: '',
     title: '',
@@ -27,13 +103,24 @@ export const TeacherLessonsManager = ({ lessons, students, onLessonsUpdate }) =>
     quizUrls: [],
     targetGroups: ['الكل'],
     learningOutcomes: [],
-    lessonSteps: []
+    lessonSteps: [],
+    componentVisibility: { ...DEFAULT_COMPONENT_VISIBILITY },
   });
 
   const getUrlsList = (arr, str) => {
     if (arr && Array.isArray(arr) && arr.length > 0) return arr;
     if (str && typeof str === 'string' && str.trim() !== '') return [str];
     return [];
+  };
+
+  const handleComponentVisibilityChange = (componentKey, config) => {
+    setLessonData(prev => ({
+      ...prev,
+      componentVisibility: {
+        ...prev.componentVisibility,
+        [componentKey]: config,
+      },
+    }));
   };
 
   const handleAddLesson = async (e) => {
@@ -54,12 +141,10 @@ export const TeacherLessonsManager = ({ lessons, students, onLessonsUpdate }) =>
           learningOutcomes: lessonData.learningOutcomes,
           lessonSteps: lessonData.lessonSteps,
           targetGroups: lessonData.targetGroups,
+          componentVisibility: lessonData.componentVisibility,
           updatedAt: new Date().toISOString()
         });
-        toast({
-          title: "تم تحديث الدرس",
-          description: "تم تحديث الدرس بنجاح",
-        });
+        toast({ title: "تم تحديث الدرس", description: "تم تحديث الدرس بنجاح" });
       } else {
         await addDoc(collection(db, 'lessons'), {
           ...lessonData,
@@ -67,12 +152,10 @@ export const TeacherLessonsManager = ({ lessons, students, onLessonsUpdate }) =>
           learningOutcomes: lessonData.learningOutcomes,
           lessonSteps: lessonData.lessonSteps,
           targetGroups: lessonData.targetGroups,
+          componentVisibility: lessonData.componentVisibility,
           createdAt: new Date().toISOString()
         });
-        toast({
-          title: "تم إضافة الدرس",
-          description: "تم إضافة الدرس بنجاح",
-        });
+        toast({ title: "تم إضافة الدرس", description: "تم إضافة الدرس بنجاح" });
       }
 
       setLessonData({
@@ -85,7 +168,8 @@ export const TeacherLessonsManager = ({ lessons, students, onLessonsUpdate }) =>
         quizUrls: [],
         targetGroups: ['الكل'],
         learningOutcomes: [],
-        lessonSteps: []
+        lessonSteps: [],
+        componentVisibility: { ...DEFAULT_COMPONENT_VISIBILITY },
       });
       setAddLessonOpen(false);
       setEditingLesson(null);
@@ -111,7 +195,10 @@ export const TeacherLessonsManager = ({ lessons, students, onLessonsUpdate }) =>
       quizUrls: getUrlsList(lesson.quizUrls, lesson.quizUrl || lesson.questionsUrl),
       targetGroups: lesson.targetGroups === undefined ? ['الكل'] : lesson.targetGroups,
       learningOutcomes: lesson.learningOutcomes || [],
-      lessonSteps: lesson.lessonSteps || []
+      lessonSteps: lesson.lessonSteps || [],
+      componentVisibility: lesson.componentVisibility
+        ? { ...DEFAULT_COMPONENT_VISIBILITY, ...lesson.componentVisibility }
+        : { ...DEFAULT_COMPONENT_VISIBILITY },
     });
     setAddLessonOpen(true);
   };
@@ -120,13 +207,8 @@ export const TeacherLessonsManager = ({ lessons, students, onLessonsUpdate }) =>
     if (window.confirm('هل أنت متأكد من حذف هذا الدرس؟')) {
       try {
         await deleteDoc(doc(db, 'lessons', lessonId));
-        toast({
-          title: "تم حذف الدرس",
-          description: "تم حذف الدرس بنجاح",
-        });
-        if (selectedLessonId === lessonId) {
-          setSelectedLessonId("all");
-        }
+        toast({ title: "تم حذف الدرس", description: "تم حذف الدرس بنجاح" });
+        if (selectedLessonId === lessonId) setSelectedLessonId("all");
         onLessonsUpdate();
       } catch (error) {
         toast({
@@ -135,6 +217,32 @@ export const TeacherLessonsManager = ({ lessons, students, onLessonsUpdate }) =>
           variant: "destructive",
         });
       }
+    }
+  };
+
+  // Quick toggle a single component's visibility directly from the card
+  const handleQuickVisibilityToggle = async (lesson, componentKey) => {
+    const currentVis = lesson.componentVisibility
+      ? { ...DEFAULT_COMPONENT_VISIBILITY, ...lesson.componentVisibility }
+      : { ...DEFAULT_COMPONENT_VISIBILITY };
+    const comp = currentVis[componentKey];
+    const nextVisible = !comp.visible;
+    const updatedComponentVisibility = {
+      ...currentVis,
+      [componentKey]: { ...comp, visible: nextVisible },
+    };
+    try {
+      await updateDoc(doc(db, 'lessons', lesson.id), {
+        componentVisibility: updatedComponentVisibility,
+        updatedAt: new Date().toISOString(),
+      });
+      toast({
+        title: nextVisible ? 'تم الإظهار' : 'تم الإخفاء',
+        description: `${COMPONENT_LABELS[componentKey]} أصبح ${nextVisible ? 'ظاهراً' : 'مخفياً'}.`,
+      });
+      onLessonsUpdate();
+    } catch (err) {
+      toast({ title: 'خطأ', description: err.message, variant: 'destructive' });
     }
   };
 
@@ -173,7 +281,8 @@ export const TeacherLessonsManager = ({ lessons, students, onLessonsUpdate }) =>
                   quizUrls: [],
                   targetGroups: ['الكل'],
                   learningOutcomes: [],
-                  lessonSteps: []
+                  lessonSteps: [],
+                  componentVisibility: { ...DEFAULT_COMPONENT_VISIBILITY },
                 });
                 setEditingLesson(null);
               }
@@ -193,7 +302,7 @@ export const TeacherLessonsManager = ({ lessons, students, onLessonsUpdate }) =>
               {editingLesson ? 'تعديل الدرس الحالي' : 'إضافة درس جديد'}
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-md overflow-y-auto max-h-[80vh]">
+          <DialogContent className="sm:max-w-lg overflow-y-auto max-h-[90vh]">
             <DialogHeader>
               <DialogTitle className="text-center text-2xl gradient-text">
                 {editingLesson ? 'تعديل الدرس' : 'إضافة درس جديد'}
@@ -295,8 +404,10 @@ export const TeacherLessonsManager = ({ lessons, students, onLessonsUpdate }) =>
                   placeholder="اكتب خطوات السير هنا، كل خطوة في سطر جديد."
                 />
               </div>
+
+              {/* Lesson-level group visibility */}
               <div className="space-y-2 p-4 bg-gray-50 border rounded-lg">
-                <Label className="text-blue-700 font-bold">المجموعات المسموح لها برؤية الدرس</Label>
+                <Label className="text-blue-700 font-bold">المجموعات المسموح لها برؤية الدرس (كاملاً)</Label>
                 <div className="flex flex-wrap gap-2 mt-2">
                   {availableGroups.map(group => (
                     <label key={group} className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-full border cursor-pointer hover:bg-gray-100 transition-colors shadow-sm">
@@ -319,6 +430,30 @@ export const TeacherLessonsManager = ({ lessons, students, onLessonsUpdate }) =>
                 </div>
                 <p className="text-xs text-gray-500 mt-2">إذا لم يتم تحديد أي مجموعة، سيكون الدرس مخفياً عن الجميع. لجعله متاحاً للكل، اختر "الكل".</p>
               </div>
+
+              {/* Component-level visibility */}
+              <div className="space-y-3 p-4 bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-200 rounded-xl">
+                <div className="flex items-center gap-2 mb-1">
+                  <Settings2 className="w-4 h-4 text-indigo-600" />
+                  <Label className="text-indigo-700 font-bold text-sm">إظهار / إخفاء أجزاء الدرس لكل مجموعة</Label>
+                </div>
+                <p className="text-xs text-gray-500 mb-3">
+                  تحكم في ظهور كل جزء من أجزاء الدرس بشكل مستقل لكل مجموعة، دون التأثير على باقي الإعدادات.
+                </p>
+                <div className="space-y-2">
+                  {Object.entries(COMPONENT_LABELS).map(([key, label]) => (
+                    <ComponentVisibilityRow
+                      key={key}
+                      componentKey={key}
+                      label={label}
+                      visibilityConfig={lessonData.componentVisibility[key] || DEFAULT_COMPONENT_VISIBILITY[key]}
+                      availableGroups={availableGroups}
+                      onChange={handleComponentVisibilityChange}
+                    />
+                  ))}
+                </div>
+              </div>
+
               <Button type="submit" className="w-full bg-gradient-to-r from-purple-600 to-blue-600">
                 {editingLesson ? 'تحديث الدرس' : 'إضافة الدرس'}
               </Button>
@@ -361,6 +496,11 @@ export const TeacherLessonsManager = ({ lessons, students, onLessonsUpdate }) =>
             const iUrls = getUrlsList(lesson.infographicUrls, lesson.infographicUrl);
             const aUrls = getUrlsList(lesson.activityUrls, lesson.activityUrl);
             const qUrls = getUrlsList(lesson.quizUrls, lesson.quizUrl || lesson.questionsUrl);
+            const compVis = lesson.componentVisibility
+              ? { ...DEFAULT_COMPONENT_VISIBILITY, ...lesson.componentVisibility }
+              : { ...DEFAULT_COMPONENT_VISIBILITY };
+
+            const isShowingVisibility = showVisibilityFor === lesson.id;
 
             return (
               <motion.div
@@ -386,7 +526,18 @@ export const TeacherLessonsManager = ({ lessons, students, onLessonsUpdate }) =>
                           )}
                         </CardDescription>
                       </div>
-                      <div className="flex gap-2">
+                      <div className="flex gap-2 flex-wrap justify-end">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setShowVisibilityFor(isShowingVisibility ? null : lesson.id)}
+                          className={`text-xs gap-1 ${isShowingVisibility ? 'bg-indigo-50 text-indigo-700 border-indigo-300' : 'hover:bg-indigo-50 hover:text-indigo-600'}`}
+                          title="إدارة ظهور أجزاء الدرس"
+                        >
+                          <Settings2 className="w-3.5 h-3.5" />
+                          <span className="hidden sm:inline">رؤية الأجزاء</span>
+                          {isShowingVisibility ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                        </Button>
                         <Button
                           size="sm"
                           variant="outline"
@@ -469,6 +620,55 @@ export const TeacherLessonsManager = ({ lessons, students, onLessonsUpdate }) =>
                         </div>
                       )}
                     </div>
+
+                    {/* Quick Component Visibility Panel */}
+                    {isShowingVisibility && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        transition={{ duration: 0.25 }}
+                        className="mt-5 pt-4 border-t border-indigo-100"
+                      >
+                        <div className="flex items-center gap-2 mb-3">
+                          <Settings2 className="w-4 h-4 text-indigo-600" />
+                          <h4 className="text-sm font-bold text-indigo-700">إظهار / إخفاء أجزاء الدرس</h4>
+                          <span className="text-xs text-gray-400 mr-auto">اضغط لتبديل الظهور — للتحكم في المجموعات استخدم ✏️</span>
+                        </div>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                          {Object.entries(COMPONENT_LABELS).map(([key, label]) => {
+                            const comp = compVis[key];
+                            const isVisible = comp?.visible !== false;
+                            const groups = comp?.groups || ['الكل'];
+                            return (
+                              <button
+                                key={key}
+                                type="button"
+                                onClick={() => handleQuickVisibilityToggle(lesson, key)}
+                                className={`flex flex-col items-start p-2.5 rounded-xl border text-xs transition-all duration-200 text-right ${isVisible
+                                  ? 'bg-green-50 border-green-200 hover:bg-green-100 text-green-800'
+                                  : 'bg-red-50 border-red-200 hover:bg-red-100 text-red-700 opacity-80'
+                                  }`}
+                              >
+                                <div className="flex items-center gap-1 mb-1 w-full">
+                                  {isVisible
+                                    ? <Eye className="w-3.5 h-3.5 text-green-600 flex-shrink-0" />
+                                    : <EyeOff className="w-3.5 h-3.5 text-red-500 flex-shrink-0" />}
+                                  <span className="font-semibold truncate">{label}</span>
+                                </div>
+                                {isVisible && (
+                                  <div className="flex flex-wrap gap-0.5">
+                                    {groups.map(g => (
+                                      <span key={g} className="bg-green-200/70 text-green-800 px-1.5 py-0.5 rounded-full text-[10px]">{g}</span>
+                                    ))}
+                                  </div>
+                                )}
+                                {!isVisible && <span className="text-[10px] text-red-500">مخفي عن الجميع</span>}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </motion.div>
+                    )}
                   </CardContent>
                 </Card>
               </motion.div>
