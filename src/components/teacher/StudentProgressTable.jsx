@@ -67,16 +67,32 @@ const StudentProgressTable = ({
       const completedLessons = progress.completedLessons?.length || 0;
       const progressPercentage = totalLessonsCount > 0 ? (completedLessons / totalLessonsCount) * 100 : 0;
 
+      const lessonsWithVideoCount = lessons.filter(l => l.videoUrl).length;
+      const lessonsWithPdfCount = lessons.filter(l => l.pdfUrl).length;
+      const lessonsWithQuizCount = lessons.filter(l => l.quizUrl || l.questionsUrl).length;
+
       // حساب تقدم الوسائط بدقة من الخرائط الممررة
       let videoCompletedLessonsCount = 0;
+      let totalVideoWatchedPercentage = 0;
+      let validVideosCount = 0;
       let questionsAccessedLessonsCount = 0;
+      let pdfOpenedLessonsCount = 0;
       let totalStudentScores = 0;
       let studentScoreCount = 0;
 
       lessons.forEach(lesson => {
         // التحقق من الفيديو
-        if (videoProgress[`${student.id}_${lesson.id}`]?.isCompleted) {
-          videoCompletedLessonsCount++;
+        if (lesson.videoUrl && lesson.videoUrl.trim() !== '') {
+          validVideosCount++;
+          const vp = videoProgress[`${student.id}_${lesson.id}`];
+          if (vp) {
+            if (vp.isCompleted) {
+              videoCompletedLessonsCount++;
+              totalVideoWatchedPercentage += 100;
+            } else if (vp.watchedPercentage) {
+              totalVideoWatchedPercentage += vp.watchedPercentage;
+            }
+          }
         }
 
         // التحقق من الأسئلة/الاختبار
@@ -88,14 +104,16 @@ const StudentProgressTable = ({
             studentScoreCount++;
           }
         }
+        // التحقق من ملف الـ PDF
+        const pdfData = quizProgress[`${student.id}_${lesson.id}_pdf`];
+        if (pdfData && pdfData.isUnlocked) {
+          pdfOpenedLessonsCount++;
+        }
       });
 
-      // افتراض فتح الـ PDF بناءً على الدروس المكتملة
-      const pdfOpenedLessonsCount = Math.floor(completedLessons * 0.9);
-
-      const videoCompletionRate = totalLessonsCount > 0 ? (videoCompletedLessonsCount / totalLessonsCount) * 100 : 0;
-      const pdfOpenRate = totalLessonsCount > 0 ? (pdfOpenedLessonsCount / totalLessonsCount) * 100 : 0;
-      const questionsAccessRate = totalLessonsCount > 0 ? (questionsAccessedLessonsCount / totalLessonsCount) * 100 : 0;
+      const videoCompletionRate = validVideosCount > 0 ? (totalVideoWatchedPercentage / validVideosCount) : 0;
+      const pdfOpenRate = lessonsWithPdfCount > 0 ? (pdfOpenedLessonsCount / lessonsWithPdfCount) * 100 : (pdfOpenedLessonsCount > 0 ? 100 : 0);
+      const questionsAccessRate = lessonsWithQuizCount > 0 ? (questionsAccessedLessonsCount / lessonsWithQuizCount) * 100 : (questionsAccessedLessonsCount > 0 ? 100 : 0);
 
       const averageScore = studentScoreCount > 0
         ? totalStudentScores / studentScoreCount
@@ -423,7 +441,7 @@ const StudentProgressTable = ({
                       <div className="text-center">
                         <div className="font-medium text-lg">{student.videoCompletionRate}%</div>
                         <div className="text-sm text-gray-500">
-                          {student.videoCompletedLessons} من {student.totalLessons} فيديو
+                          {student.videoCompletedLessons} من {lessons.filter(l => l.videoUrl).length > 0 ? lessons.filter(l => l.videoUrl).length : student.totalLessons} فيديو
                         </div>
                         <div className="w-full bg-gray-200 rounded-full h-2 mt-1">
                           <div
@@ -437,7 +455,7 @@ const StudentProgressTable = ({
                       <div className="text-center">
                         <div className="font-medium text-lg">{student.pdfOpenRate}%</div>
                         <div className="text-sm text-gray-500">
-                          {student.pdfOpenedLessons} من {student.totalLessons} ملف
+                          {student.pdfOpenedLessons} من {lessons.filter(l => l.pdfUrl).length > 0 ? lessons.filter(l => l.pdfUrl).length : student.totalLessons} ملف
                         </div>
                         <div className="w-full bg-gray-200 rounded-full h-2 mt-1">
                           <div
@@ -451,7 +469,7 @@ const StudentProgressTable = ({
                       <div className="text-center">
                         <div className="font-medium text-lg">{student.questionsAccessRate}%</div>
                         <div className="text-sm text-gray-500">
-                          {student.questionsAccessedLessons} من {student.totalLessons} سؤال
+                          {student.questionsAccessedLessons} من {lessons.filter(l => l.quizUrl || l.questionsUrl).length > 0 ? lessons.filter(l => l.quizUrl || l.questionsUrl).length : student.totalLessons} سؤال
                         </div>
                         <div className="w-full bg-gray-200 rounded-full h-2 mt-1">
                           <div
