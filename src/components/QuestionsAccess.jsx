@@ -9,7 +9,7 @@ import { MOTIVATION_TYPES } from '@/lib/motivationMessages';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
-const QuestionsAccess = ({ questionsUrl, lessonId, index = 0, isVisible = true }) => {
+const QuestionsAccess = ({ questionsUrl, lessonId, isVisible = true, onMarkComplete }) => {
 
   // 🔥 فلتر الإظهار والإخفاء — لو مخفي يرجع ولا شيء
   if (!isVisible) {
@@ -27,7 +27,7 @@ const QuestionsAccess = ({ questionsUrl, lessonId, index = 0, isVisible = true }
   const saveProgress = useCallback(async (unlocked, completed) => {
     if (!studentId || !lessonId) return;
     try {
-      const progressRef = doc(db, 'contentProgress', `${studentId}_${lessonId}_quiz${index > 0 ? `_${index}` : ''}`);
+      const progressRef = doc(db, 'contentProgress', `${studentId}_${lessonId}_quiz`);
       await setDoc(progressRef, {
         isUnlocked: unlocked,
         isCompleted: completed,
@@ -49,12 +49,15 @@ const QuestionsAccess = ({ questionsUrl, lessonId, index = 0, isVisible = true }
       setIsExpanded(false);
 
       try {
-        const progressRef = doc(db, 'contentProgress', `${studentId}_${lessonId}_quiz${index > 0 ? `_${index}` : ''}`);
+        const progressRef = doc(db, 'contentProgress', `${studentId}_${lessonId}_quiz`);
         const snap = await getDoc(progressRef);
         if (snap.exists()) {
           const data = snap.data();
           setIsUnlocked(data.isUnlocked || false);
           setIsCompleted(data.isCompleted || false);
+          if (data.isCompleted && onMarkComplete) {
+            onMarkComplete();
+          }
         }
       } catch (error) {
         console.error("Error loading Quiz progress:", error);
@@ -163,6 +166,7 @@ const QuestionsAccess = ({ questionsUrl, lessonId, index = 0, isVisible = true }
                 setIsCompleted(true);
                 saveProgress(isUnlocked, true);
                 showMotivation(MOTIVATION_TYPES.QUIZ_COMPLETE);
+                if (onMarkComplete) onMarkComplete();
               }}
               disabled={!isUnlocked || isCompleted}
               className={`${isCompleted ? 'bg-green-600 hover:bg-green-700' : 'bg-blue-600 hover:bg-blue-700'} text-white shadow-sm transition-all duration-300 disabled:opacity-50 disabled:grayscale min-h-[36px] flex-1 sm:flex-none`}
