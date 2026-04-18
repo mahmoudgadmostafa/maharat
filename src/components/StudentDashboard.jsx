@@ -42,29 +42,25 @@ const StudentDashboard = memo(() => {
   const [showMessaging, setShowMessaging] = useState(false);
   const { showMotivation } = useMotivation();
 
-  const fetchLessonsAndUserData = useCallback(async () => {
-    if (!currentUser) return { userData: null, lessonsData: [] };
+  const fetchUserData = useCallback(async () => {
+    if (!currentUser) return null;
     try {
-      let fetchedUserData = null;
       const userDocRef = doc(db, 'users', currentUser.uid);
       const userDocSnap = await getDoc(userDocRef);
       if (userDocSnap.exists()) {
-        fetchedUserData = userDocSnap.data();
+        const fetchedUserData = userDocSnap.data();
         setUserData(fetchedUserData);
+        return fetchedUserData;
       }
-
-      const lessonsSnapshot = await getDocs(collection(db, 'lessons'));
-      const lessonsData = lessonsSnapshot.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (a.lessonNumber || 0) - (b.lessonNumber || 0));
-      setAllLessons(lessonsData);
-      return { userData: fetchedUserData, lessonsData };
+      return null;
     } catch (error) {
-      console.error('Error fetching lessons or user data:', error);
+      console.error('Error fetching user data:', error);
       toast({
-        title: "خطأ في تحميل البيانات الأولية",
-        description: "لم نتمكن من تحميل الدروس أو بيانات المستخدم.",
+        title: "خطأ في تحميل بيانات المستخدم",
+        description: "لم نتمكن من تحميل بيانات المستخدم.",
         variant: "destructive",
       });
-      return { userData: null, lessonsData: [] };
+      return null;
     }
   }, [currentUser]);
 
@@ -88,7 +84,37 @@ const StudentDashboard = memo(() => {
     let isMounted = true;
     setLoading(true);
 
-    const setupListeners = (currentFetchedUserData) => {
+    // ── Real-time lessons listener (updates instantly when teacher changes visibility) ──
+    const unsubscribeLessons = onSnapshot(
+      collection(db, 'lessons'),
+      (snapshot) => {
+        if (!isMounted) return;
+        const lessonsData = snapshot.docs
+          .map(d => ({ id: d.id, ...d.data() }))
+          .sort((a, b) => (a.lessonNumber || 0) - (b.lessonNumber || 0));
+        setAllLessons(lessonsData);
+        // Keep selectedLesson in sync with latest data from Firestore
+        setSelectedLesson(prev => {
+          if (!prev) return null;
+          const updated = lessonsData.find(l => l.id === prev.id);
+          return updated || prev;
+        });
+      },
+      (error) => {
+        if (!isMounted) return;
+        console.error('Error fetching lessons:', error);
+        toast({ title: "خطأ في تحميل الدروس", variant: "destructive" });
+      }
+    );
+
+    // ── User data + other real-time listeners ──
+    fetchUserData().then((fetchedUserData) => {
+      if (!isMounted) return;
+      if (!fetchedUserData) {
+        setLoading(false);
+        return;
+      }
+
       const progressDocRef = doc(db, 'studentProgress', currentUser.uid);
       const unsubscribeProgress = onSnapshot(progressDocRef, async (docSnap) => {
         if (!isMounted) return;
@@ -96,11 +122,8 @@ const StudentDashboard = memo(() => {
           setStudentProgress(docSnap.data());
         } else {
           try {
-            const userForProgress = currentFetchedUserData || (await getDoc(doc(db, 'users', currentUser.uid))).data();
-            if (isMounted && userForProgress) {
-              await setDoc(progressDocRef, { completedLessons: [], studentName: userForProgress.name || 'طالب' });
-              setStudentProgress({ completedLessons: [], studentName: userForProgress.name || 'طالب' });
-            }
+            await setDoc(progressDocRef, { completedLessons: [], studentName: fetchedUserData.name || 'طالب' });
+            setStudentProgress({ completedLessons: [], studentName: fetchedUserData.name || 'طالب' });
           } catch (e) {
             console.error("Error setting initial student progress:", e);
           }
@@ -121,8 +144,8 @@ const StudentDashboard = memo(() => {
             ...newSettings,
             finalExamsList: newSettings.finalExamsList || [],
             meetingRoomsList: newSettings.meetingRoomsList || [],
-            studentAiToolsList: newSettings.studentAiToolsList || [], // التأكد من وجود القائمة
-            teacherAiToolsList: newSettings.teacherAiToolsList || [] // لاستخدامها لاحقًا إذا لزم الأمر
+            studentAiToolsList: newSettings.studentAiToolsList || [],
+            teacherAiToolsList: newSettings.teacherAiToolsList || []
           }));
         }
       }, (error) => {
@@ -131,31 +154,19 @@ const StudentDashboard = memo(() => {
         toast({ title: "خطأ في تحديث إعدادات المنصة", variant: "destructive" });
       });
 
-      return [unsubscribeProgress, unsubscribeSettings];
-    };
+      setLoading(false);
 
-    fetchLessonsAndUserData().then(({ userData: fetchedUserData }) => {
-      if (isMounted) {
-        if (!fetchedUserData) {
-          // محاولة أخيرة إذا فشل الجلب الأولي
-          setLoading(false);
-          return;
-        }
-        const unsubscribers = setupListeners(fetchedUserData);
-        setLoading(false);
-
-        if (unsubscribers) {
-          return () => {
-            unsubscribers.forEach(unsub => unsub && unsub());
-          };
-        }
-      }
+      return () => {
+        unsubscribeProgress();
+        unsubscribeSettings();
+      };
     });
 
     return () => {
       isMounted = false;
+      unsubscribeLessons();
     };
-  }, [currentUser, fetchLessonsAndUserData]);
+  }, [currentUser, fetchUserData]);
 
   const availableLessons = useMemo(() => {
     if (!userData) return [];
@@ -326,6 +337,7 @@ const StudentDashboard = memo(() => {
                     selectedLessonId={selectedLesson?.id}
                     onLessonClick={handleLessonClick}
                     studentProgress={studentProgress}
+                    studentGroup={userData?.group}
                   />
                 </Suspense>
 
@@ -355,6 +367,7 @@ const StudentDashboard = memo(() => {
                         studentProgress={studentProgress}
                         onMarkLessonComplete={markLessonAsComplete}
                         platformSettings={platformSettings}
+                        studentGroup={userData?.group}
                       />
                     </Suspense>
                   ) : (
