@@ -138,6 +138,10 @@ const TeacherAnalytics = ({
       const strugglingStudents = [];
       const topPerformers = [];
 
+      const lessonsWithVideoCount = lessons.filter(l => l.videoUrl).length;
+      const lessonsWithPdfCount = lessons.filter(l => l.pdfUrl).length;
+      const lessonsWithQuizCount = lessons.filter(l => l.quizUrl || l.questionsUrl).length;
+
       // تحليل تقدم كل طالب
       const studentAnalytics = safeStudents.map(student => {
         const studentId = student.id || student.uid;
@@ -147,8 +151,9 @@ const TeacherAnalytics = ({
         const completedLessonsCount = progress.completedLessons?.length || 0;
 
         // حساب تقدم الوسائط بدقة من الخرائط الممررة
-        let completedVideos = 0;
-        let openedPdfs = 0; // ملاحظة: حالياً PDF لا يملك مجموعة منفصلة، سنستخدم نسبة من الدروس المكتملة أو نفترض فتحها
+        let totalVideoWatchedPercentage = 0;
+        let validVideosCount = 0;
+        let openedPdfs = 0; 
         let accessedQuestions = 0;
         let totalStudentScores = 0;
         let studentScoreCount = 0;
@@ -157,8 +162,16 @@ const TeacherAnalytics = ({
           if (!lesson || !lesson.id) return;
 
           // التحقق من الفيديو
-          if (videoProgress[`${studentId}_${lesson.id}`]?.isCompleted) {
-            completedVideos++;
+          if (lesson.videoUrl && lesson.videoUrl.trim() !== '') {
+            validVideosCount++;
+            const vp = videoProgress[`${studentId}_${lesson.id}`];
+            if (vp) {
+              if (vp.isCompleted) {
+                totalVideoWatchedPercentage += 100;
+              } else if (vp.watchedPercentage) {
+                totalVideoWatchedPercentage += vp.watchedPercentage;
+              }
+            }
           }
 
           // التحقق من الأسئلة/الاختبار
@@ -170,15 +183,17 @@ const TeacherAnalytics = ({
               studentScoreCount++;
             }
           }
+          // التحقق من ملف الـ PDF
+          const pdfData = quizProgress[`${studentId}_${lesson.id}_pdf`];
+          if (pdfData && pdfData.isUnlocked) {
+            openedPdfs++;
+          }
         });
 
-        // افتراض فتح الـ PDF بناءً على الدروس المكتملة (لأننا لا نملك تتبعاً منفصلاً حالياً للـ PDF في قاعدة البيانات)
-        openedPdfs = Math.floor(completedLessonsCount * 0.9);
-
         const progressPercentage = totalLessons > 0 ? (completedLessonsCount / totalLessons) * 100 : 0;
-        const videoProgressPercentage = totalLessons > 0 ? (completedVideos / totalLessons) * 100 : 0;
-        const pdfProgressPercentage = totalLessons > 0 ? (openedPdfs / totalLessons) * 100 : 0;
-        const questionsProgressPercentage = totalLessons > 0 ? (accessedQuestions / totalLessons) * 100 : 0;
+        const videoProgressPercentage = validVideosCount > 0 ? (totalVideoWatchedPercentage / validVideosCount) : 0;
+        const pdfProgressPercentage = lessonsWithPdfCount > 0 ? (openedPdfs / lessonsWithPdfCount) * 100 : (openedPdfs > 0 ? 100 : 0);
+        const questionsProgressPercentage = lessonsWithQuizCount > 0 ? (accessedQuestions / lessonsWithQuizCount) * 100 : (accessedQuestions > 0 ? 100 : 0);
 
         // تحديد إذا كان الطالب نشط (افتراضياً نشط إذا أكمل درس واحد على الأقل)
         const isActive = completedLessonsCount > 0;
@@ -307,8 +322,15 @@ const TeacherAnalytics = ({
           const studentId = student.id || student.uid;
 
           // الفيديو
-          if (videoProgress[`${studentId}_${lesson.id}`]?.isCompleted) {
-            videoCompletions++;
+          if (lesson.videoUrl && lesson.videoUrl.trim() !== '') {
+             const vp = videoProgress[`${studentId}_${lesson.id}`];
+             if (vp) {
+                if (vp.isCompleted) {
+                   videoCompletions += 100;
+                } else if (vp.watchedPercentage) {
+                   videoCompletions += vp.watchedPercentage;
+                }
+             }
           }
           // الدرجات
           const quizData = quizProgress[`${studentId}_${lesson.id}_quiz`];
@@ -319,7 +341,7 @@ const TeacherAnalytics = ({
         });
 
         const averageScore = lessonScoreCount > 0 ? totalLessonScore / lessonScoreCount : 0;
-        const videoCompletionRate = studentsStarted > 0 ? (videoCompletions / studentsStarted) * 100 : 0;
+        const videoCompletionRate = studentsStarted > 0 ? (videoCompletions / studentsStarted) : 0;
         const completionRate = studentsStarted > 0 ? (studentsCompleted / studentsStarted) * 100 : 0;
 
         return {
