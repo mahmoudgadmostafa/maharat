@@ -9,7 +9,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Clock, Trophy, Play, Pause, RotateCcw, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
-const VideoPlayer = ({ videoUrl, lessonId, index = 0, className = "" }) => {
+const VideoPlayer = ({ videoUrl, lessonId, className = "", onMarkComplete }) => {
   const containerRef = useRef(null);
   const videoRef = useRef(null);
   const playerRef = useRef(null);
@@ -58,7 +58,7 @@ const VideoPlayer = ({ videoUrl, lessonId, index = 0, className = "" }) => {
 
     try {
       lastTimeRef.current = currentTime;
-      const progressRef = doc(db, 'videoProgress', `${studentId}_${lessonId}${index > 0 ? `_${index}` : ''}`);
+      const progressRef = doc(db, 'videoProgress', `${studentId}_${lessonId}`);
       await setDoc(progressRef, {
         currentTime,
         isCompleted,
@@ -86,7 +86,7 @@ const VideoPlayer = ({ videoUrl, lessonId, index = 0, className = "" }) => {
       lastTimeRef.current = 0;
 
       try {
-        const progressRef = doc(db, 'videoProgress', `${studentId}_${lessonId}${index > 0 ? `_${index}` : ''}`);
+        const progressRef = doc(db, 'videoProgress', `${studentId}_${lessonId}`);
         const snap = await getDoc(progressRef);
         if (snap.exists()) {
           const data = snap.data();
@@ -97,6 +97,7 @@ const VideoPlayer = ({ videoUrl, lessonId, index = 0, className = "" }) => {
           if (data.isCompleted) {
             setShowSuccessOverlay(true);
             setHasCompleted(true);
+            if (onMarkComplete) onMarkComplete();
           } else if (time > 2) { // Only show notice if more than 2 seconds saved
             setShowResumeNotice(true);
             setTimeout(() => setShowResumeNotice(false), 4000);
@@ -149,7 +150,8 @@ const VideoPlayer = ({ videoUrl, lessonId, index = 0, className = "" }) => {
     }
     saveProgress(0, true); // Mark as completed in DB
     setShowSuccessOverlay(true);
-  }, [hasCompleted, studentId, lessonId, videoUrl, showMotivation, saveProgress, isYouTube]);
+    if (onMarkComplete) onMarkComplete();
+  }, [hasCompleted, studentId, lessonId, videoUrl, showMotivation, saveProgress, isYouTube, onMarkComplete]);
 
   // YouTube API Integration
   const saveProgressRef = useRef(saveProgress);
@@ -206,7 +208,7 @@ const VideoPlayer = ({ videoUrl, lessonId, index = 0, className = "" }) => {
       if (playerRef.current) {
         try { playerRef.current.destroy(); } catch (e) { }
       }
-      playerRef.current = new window.YT.Player(`yt-player-${lessonId}-${index}`, {
+      playerRef.current = new window.YT.Player(`yt-player-${lessonId}`, {
         videoId: videoId,
         playerVars: {
           autoplay: 0,
@@ -388,175 +390,178 @@ const VideoPlayer = ({ videoUrl, lessonId, index = 0, className = "" }) => {
   };
 
   return (
-    <div
-      onMouseEnter={() => setIsHovering(true)}
-      onMouseLeave={() => setIsHovering(false)}
-      className="aspect-video rounded-xl overflow-hidden shadow-2xl bg-black relative group select-none"
-    >
-      {/* Cropping Wrapper to hide YouTube branding (titles/logos) */}
-      <div className={`w-full h-full relative ${isYouTube ? 'scale-[1.15]' : ''}`}>
-        {isYouTube ? (
-          <div id={`yt-player-${lessonId}-${index}`} className="w-full h-full"></div>
-        ) : (
-          <video
-            ref={videoRef}
-            src={videoUrl}
-            className={`w-full h-full ${className}`}
-            preload="metadata"
-            onPlay={() => setIsPlaying(true)}
-            onPause={() => setIsPlaying(false)}
-          >
-            متصفحك لا يدعم تشغيل الفيديو.
-          </video>
-        )}
-      </div>
+    <div className="space-y-3">
 
-      {/* Transparent Interaction Layer */}
-      {!showSuccessOverlay && (
-        <div
-          onClick={handleTogglePlay}
-          className="absolute inset-0 z-10 cursor-pointer flex items-center justify-center"
-        >
-          {/* Central Status Icon */}
-          <AnimatePresence>
-            {(showCenterIcon || !isPlaying) && (
-              <motion.div
-                initial={{ scale: 0.8, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 1.2, opacity: 0 }}
-                className="bg-sky-500/80 p-6 rounded-full text-white shadow-2xl backdrop-blur-sm"
-              >
-                {currentTime >= duration - 1 && duration > 0 ? (
-                  <RotateCcw className="w-8 h-8 fill-current" />
-                ) : isPlaying ? (
-                  <Pause className="w-8 h-8 fill-current" />
-                ) : (
-                  <Play className="w-8 h-8 fill-current ml-1" />
-                )}
-              </motion.div>
-            )}
-          </AnimatePresence>
+      <div
+        onMouseEnter={() => setIsHovering(true)}
+        onMouseLeave={() => setIsHovering(false)}
+        className={`aspect-video rounded-xl overflow-hidden shadow-2xl bg-black relative group select-none ${className}`}
+      >
+        {/* Cropping Wrapper to hide YouTube branding (titles/logos) */}
+        <div className={`w-full h-full relative ${isYouTube ? 'scale-[1.15]' : ''}`}>
+          {isYouTube ? (
+            <div id={`yt-player-${lessonId}`} className="w-full h-full"></div>
+          ) : (
+            <video
+              ref={videoRef}
+              src={videoUrl}
+              className={`w-full h-full ${className}`}
+              preload="metadata"
+              onPlay={() => setIsPlaying(true)}
+              onPause={() => setIsPlaying(false)}
+            >
+              متصفحك لا يدعم تشغيل الفيديو.
+            </video>
+          )}
         </div>
-      )}
 
-      {/* Custom Minimal Progress Bar */}
-      <AnimatePresence>
-        {isHovering && !showSuccessOverlay && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 10 }}
-            className="absolute bottom-0 left-0 right-0 z-20 px-4 pb-4 pt-10 bg-gradient-to-t from-black/80 to-transparent"
+        {/* Transparent Interaction Layer */}
+        {!showSuccessOverlay && (
+          <div
+            onClick={handleTogglePlay}
+            className="absolute inset-0 z-10 cursor-pointer flex items-center justify-center"
           >
-            <div className="flex flex-col gap-2">
-              {/* Progress Slider */}
-              <div
-                onClick={handleSeek}
-                className="h-1.5 w-full bg-white/20 rounded-full cursor-pointer relative group/bar"
-              >
-                <div
-                  className="absolute top-0 left-0 h-full bg-sky-500 rounded-full transition-all duration-100"
-                  style={{ width: `${(currentTime / duration) * 100}%` }}
+            {/* Central Status Icon */}
+            <AnimatePresence>
+              {(showCenterIcon || !isPlaying) && (
+                <motion.div
+                  initial={{ scale: 0.8, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 1.2, opacity: 0 }}
+                  className="bg-sky-500/80 p-6 rounded-full text-white shadow-2xl backdrop-blur-sm"
                 >
-                  <div className="absolute right-0 top-1/2 -translate-y-1/2 w-4 h-4 bg-white rounded-full scale-0 group-hover/bar:scale-100 transition-transform shadow-xl" />
+                  {currentTime >= duration - 1 && duration > 0 ? (
+                    <RotateCcw className="w-8 h-8 fill-current" />
+                  ) : isPlaying ? (
+                    <Pause className="w-8 h-8 fill-current" />
+                  ) : (
+                    <Play className="w-8 h-8 fill-current ml-1" />
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        )}
+
+        {/* Custom Minimal Progress Bar */}
+        <AnimatePresence>
+          {isHovering && !showSuccessOverlay && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 10 }}
+              className="absolute bottom-0 left-0 right-0 z-20 px-4 pb-4 pt-10 bg-gradient-to-t from-black/80 to-transparent"
+            >
+              <div className="flex flex-col gap-2">
+                {/* Progress Slider */}
+                <div
+                  onClick={handleSeek}
+                  className="h-1.5 w-full bg-white/20 rounded-full cursor-pointer relative group/bar"
+                >
+                  <div
+                    className="absolute top-0 left-0 h-full bg-sky-500 rounded-full transition-all duration-100"
+                    style={{ width: `${(currentTime / duration) * 100}%` }}
+                  >
+                    <div className="absolute right-0 top-1/2 -translate-y-1/2 w-4 h-4 bg-white rounded-full scale-0 group-hover/bar:scale-100 transition-transform shadow-xl" />
+                  </div>
+                </div>
+
+                {/* Time Display */}
+                <div className="flex justify-between items-center text-[10px] sm:text-xs text-white/80 font-medium">
+                  <span>{formatTime(currentTime)}</span>
+                  <span>{formatTime(duration)}</span>
                 </div>
               </div>
-
-              {/* Time Display */}
-              <div className="flex justify-between items-center text-[10px] sm:text-xs text-white/80 font-medium">
-                <span>{formatTime(currentTime)}</span>
-                <span>{formatTime(duration)}</span>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Persistent Success Overlay */}
-      <AnimatePresence>
-        {showSuccessOverlay && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-sky-950/90 backdrop-blur-sm text-white p-6 text-center"
-          >
-            <motion.div
-              initial={{ scale: 0.5, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ type: "spring", damping: 15 }}
-              className="bg-white/10 p-5 rounded-full mb-6 border border-white/20 shadow-2xl"
-            >
-              <Trophy className="w-16 h-16 text-yellow-400 drop-shadow-lg" />
             </motion.div>
+          )}
+        </AnimatePresence>
 
-            <motion.h2
-              initial={{ y: 20, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.1 }}
-              className="text-2xl sm:text-3xl font-bold mb-3"
-            >
-              أحسنت صنعاً! 🎉
-            </motion.h2>
-
-            <motion.p
-              initial={{ y: 20, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.2 }}
-              className="text-sky-100/80 mb-8 max-w-md text-sm sm:text-base leading-relaxed"
-            >
-              لقد أكملت مشاهدة هذا الدرس بنجاح. استمر في هذا الأداء الرائع واستكشف الدروس القادمة!
-            </motion.p>
-
+        {/* Persistent Success Overlay */}
+        <AnimatePresence>
+          {showSuccessOverlay && (
             <motion.div
-              initial={{ y: 20, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.3 }}
-              className="flex flex-wrap gap-4 justify-center"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-sky-950/90 backdrop-blur-sm text-white p-6 text-center"
             >
-              <Button
-                onClick={handleRestart}
-                variant="outline"
-                className="bg-white/10 hover:bg-white/20 border-white/30 text-white rounded-full px-6 py-2 h-auto"
+              <motion.div
+                initial={{ scale: 0.5, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ type: "spring", damping: 15 }}
+                className="bg-white/10 p-5 rounded-full mb-6 border border-white/20 shadow-2xl"
               >
-                <Play className="w-4 h-4 ml-2" />
-                مشاهدة مرة أخرى
-              </Button>
-              <div className="flex items-center gap-2 bg-green-500/20 px-4 py-2 rounded-full border border-green-500/30">
-                <CheckCircle className="w-4 h-4 text-green-400" />
-                <span className="text-xs font-bold text-green-100">تم الإنجاز</span>
+                <Trophy className="w-16 h-16 text-yellow-400 drop-shadow-lg" />
+              </motion.div>
+
+              <motion.h2
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.1 }}
+                className="text-2xl sm:text-3xl font-bold mb-3"
+              >
+                أحسنت صنعاً! 🎉
+              </motion.h2>
+
+              <motion.p
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.2 }}
+                className="text-sky-100/80 mb-8 max-w-md text-sm sm:text-base leading-relaxed"
+              >
+                لقد أكملت مشاهدة هذا الدرس بنجاح. استمر في هذا الأداء الرائع واستكشف الدروس القادمة!
+              </motion.p>
+
+              <motion.div
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.3 }}
+                className="flex flex-wrap gap-4 justify-center"
+              >
+                <Button
+                  onClick={handleRestart}
+                  variant="outline"
+                  className="bg-white/10 hover:bg-white/20 border-white/30 text-white rounded-full px-6 py-2 h-auto"
+                >
+                  <Play className="w-4 h-4 ml-2" />
+                  مشاهدة مرة أخرى
+                </Button>
+                <div className="flex items-center gap-2 bg-green-500/20 px-4 py-2 rounded-full border border-green-500/30">
+                  <CheckCircle className="w-4 h-4 text-green-400" />
+                  <span className="text-xs font-bold text-green-100">تم الإنجاز</span>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* High-Precision Resume Notice */}
+        <AnimatePresence>
+          {showResumeNotice && savedTime > 0 && !showSuccessOverlay && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="absolute bottom-6 left-6 right-6 z-20 pointer-events-none"
+            >
+              <div className="bg-sky-900/90 backdrop-blur-md text-white px-5 py-3 rounded-2xl shadow-2xl border border-sky-400/30 flex items-center justify-between max-w-sm mx-auto">
+                <div className="flex items-center gap-3">
+                  <div className="bg-sky-500/20 p-2 rounded-full">
+                    <Clock className="w-5 h-5 text-sky-300 animate-pulse" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold">تم استئناف المشاهدة</p>
+                    <p className="text-[10px] text-sky-200/70">من الدقيقة {formatTime(savedTime)}</p>
+                  </div>
+                </div>
+                <div className="text-[10px] bg-white/10 px-2 py-1 rounded-lg">بيانات محفوظة ✓</div>
               </div>
             </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          )}
+        </AnimatePresence>
 
-      {/* High-Precision Resume Notice */}
-      <AnimatePresence>
-        {showResumeNotice && savedTime > 0 && !showSuccessOverlay && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            className="absolute bottom-6 left-6 right-6 z-20 pointer-events-none"
-          >
-            <div className="bg-sky-900/90 backdrop-blur-md text-white px-5 py-3 rounded-2xl shadow-2xl border border-sky-400/30 flex items-center justify-between max-w-sm mx-auto">
-              <div className="flex items-center gap-3">
-                <div className="bg-sky-500/20 p-2 rounded-full">
-                  <Clock className="w-5 h-5 text-sky-300 animate-pulse" />
-                </div>
-                <div>
-                  <p className="text-sm font-bold">تم استئناف المشاهدة</p>
-                  <p className="text-[10px] text-sky-200/70">من الدقيقة {formatTime(savedTime)}</p>
-                </div>
-              </div>
-              <div className="text-[10px] bg-white/10 px-2 py-1 rounded-lg">بيانات محفوظة ✓</div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <div className="absolute inset-0 pointer-events-none border-4 border-white/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+        <div className="absolute inset-0 pointer-events-none border-4 border-white/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+      </div>
     </div>
   );
 };
