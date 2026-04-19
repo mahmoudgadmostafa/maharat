@@ -71,6 +71,7 @@ import { db } from '@/lib/firebase';
 import { toast } from '@/components/ui/use-toast';
 import { ACHIEVEMENT_EMOJIS } from '@/lib/motivationMessages';
 import StudentProgressTable from './StudentProgressTable';
+import { exportElementToPDF } from '@/utils/pdfExport';
 
 const TeacherAnalytics = ({
   students = [],
@@ -82,6 +83,30 @@ const TeacherAnalytics = ({
 }) => {
   const [lastUpdated, setLastUpdated] = useState(new Date());
   const [selectedStudentGroup, setSelectedStudentGroup] = useState('الكل');
+  const [isExporting, setIsExporting] = useState(false);
+
+  const handleExportPDF = async (elementId, fileName) => {
+    setIsExporting(true);
+    toast({
+      title: "جاري التصدير",
+      description: "يرجى الانتظار بينما يتم تجهيز الملف...",
+    });
+    const success = await exportElementToPDF(elementId, fileName);
+    if (success) {
+      toast({
+        title: "تم التصدير بنجاح",
+        description: "تم تحميل ملف PDF.",
+        className: "bg-green-100 border-green-400 text-green-800"
+      });
+    } else {
+      toast({
+        title: "خطأ في التصدير",
+        description: "حدث خطأ أثناء محاولة التصدير.",
+        variant: "destructive"
+      });
+    }
+    setIsExporting(false);
+  };
 
   // ألوان للرسوم البيانية
   const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff7300', '#00ff00', '#ff00ff'];
@@ -449,41 +474,7 @@ const TeacherAnalytics = ({
     }
   }, [students, studentProgress, videoProgress, quizProgress]);
 
-  // تصدير البيانات
-  const exportData = async () => {
-    try {
-      const dataToExport = {
-        analyticsData,
-        exportDate: new Date().toISOString(),
-        totalStudents: students.length
-      };
 
-      const blob = new Blob([JSON.stringify(dataToExport, null, 2)], {
-        type: 'application/json'
-      });
-
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `analytics-${new Date().toISOString().split('T')[0]}.json`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-
-      toast({
-        title: "تم تصدير البيانات",
-        description: "تم تحميل ملف البيانات الإحصائية بنجاح"
-      });
-    } catch (error) {
-      console.error('Error exporting data:', error);
-      toast({
-        title: "خطأ في تصدير البيانات",
-        description: "حدث خطأ أثناء تصدير البيانات الإحصائية",
-        variant: "destructive"
-      });
-    }
-  };
 
   // تصدير البيانات إلى Excel
   const exportToExcel = async () => {
@@ -577,15 +568,22 @@ const TeacherAnalytics = ({
             <Download className="w-4 h-4 mr-2" />
             تصدير Excel
           </Button>
-          <Button onClick={exportData} variant="outline" size="sm">
+
+          <Button 
+            onClick={() => handleExportPDF('top-statistics-section', 'top-statistics')} 
+            variant="default" 
+            size="sm" 
+            className="bg-[#6366f1] hover:bg-[#4f46e5] text-white"
+            disabled={isExporting}
+          >
             <Download className="w-4 h-4 mr-2" />
-            تصدير JSON
+            تصدير البطاقات العلوية PDF
           </Button>
         </div>
       </div>
 
       {/* البطاقات الإحصائية */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div id="top-statistics-section" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 p-2 bg-transparent">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -748,6 +746,12 @@ const TeacherAnalytics = ({
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4">
+          <div className="flex justify-end mb-2">
+            <Button onClick={() => handleExportPDF('tab-overview', 'overview-stats')} variant="outline" size="sm" disabled={isExporting}>
+              <Download className="w-4 h-4 mr-2" /> تصدير التبويبة PDF
+            </Button>
+          </div>
+          <div id="tab-overview" className="space-y-4 p-2 bg-transparent">
           {/* رسوم بيانية عامة */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <Card className="glass-effect border-0 shadow-xl">
@@ -821,10 +825,17 @@ const TeacherAnalytics = ({
               </CardContent>
             </Card>
           </div>
+          </div>
         </TabsContent>
 
         <TabsContent value="students" className="space-y-4">
-          <Card className="glass-effect border-0 shadow-xl">
+          <div className="flex justify-end mb-2">
+            <Button onClick={() => handleExportPDF('tab-students', 'students-stats')} variant="outline" size="sm" disabled={isExporting}>
+              <Download className="w-4 h-4 mr-2" /> تصدير التبويبة PDF
+            </Button>
+          </div>
+          <div id="tab-students" className="space-y-4 p-2 bg-transparent">
+            <Card className="glass-effect border-0 shadow-xl">
             <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <div>
                 <CardTitle className="text-xl gradient-text">إحصائيات الطلاب التفصيلية</CardTitle>
@@ -917,9 +928,16 @@ const TeacherAnalytics = ({
               </div>
             </CardContent>
           </Card>
+          </div>
         </TabsContent>
 
         <TabsContent value="lessons" className="space-y-6">
+          <div className="flex justify-end mb-2">
+            <Button onClick={() => handleExportPDF('tab-lessons', 'lessons-stats')} variant="outline" size="sm" disabled={isExporting}>
+              <Download className="w-4 h-4 mr-2" /> تصدير التبويبة PDF
+            </Button>
+          </div>
+          <div id="tab-lessons" className="space-y-6 p-2 bg-transparent">
           {/* 1. اتجاهات إكمال المنهج */}
           <Card className="glass-effect border-0 shadow-xl overflow-hidden">
             <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-full -mr-16 -mt-16 blur-3xl"></div>
@@ -1073,9 +1091,16 @@ const TeacherAnalytics = ({
               </CardContent>
             </Card>
           </div>
+          </div>
         </TabsContent>
 
         <TabsContent value="activity" className="space-y-6">
+          <div className="flex justify-end mb-2">
+            <Button onClick={() => handleExportPDF('tab-activity', 'activity-stats')} variant="outline" size="sm" disabled={isExporting}>
+              <Download className="w-4 h-4 mr-2" /> تصدير التبويبة PDF
+            </Button>
+          </div>
+          <div id="tab-activity" className="space-y-6 p-2 bg-transparent">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             <Card className="lg:col-span-2 glass-effect border-0 shadow-xl overflow-hidden">
               <CardHeader className="pb-2">
@@ -1195,9 +1220,16 @@ const TeacherAnalytics = ({
               </CardContent>
             </Card>
           </div>
+          </div>
         </TabsContent>
 
         <TabsContent value="media" className="space-y-4">
+          <div className="flex justify-end mb-2">
+            <Button onClick={() => handleExportPDF('tab-media', 'media-stats')} variant="outline" size="sm" disabled={isExporting}>
+              <Download className="w-4 h-4 mr-2" /> تصدير التبويبة PDF
+            </Button>
+          </div>
+          <div id="tab-media" className="space-y-4 p-2 bg-transparent">
           <Card className="glass-effect border-0 shadow-xl">
             <CardHeader>
               <CardTitle className="text-xl gradient-text">تقدم إكمال الفيديو</CardTitle>
@@ -1251,10 +1283,17 @@ const TeacherAnalytics = ({
               </ResponsiveContainer>
             </CardContent>
           </Card>
+          </div>
         </TabsContent>
 
 
         <TabsContent value="achievements" className="space-y-4">
+          <div className="flex justify-end mb-2">
+            <Button onClick={() => handleExportPDF('tab-achievements', 'achievements-stats')} variant="outline" size="sm" disabled={isExporting}>
+              <Download className="w-4 h-4 mr-2" /> تصدير التبويبة PDF
+            </Button>
+          </div>
+          <div id="tab-achievements" className="space-y-4 p-2 bg-transparent">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <Card className="glass-effect border-0 shadow-xl">
               <CardHeader>
@@ -1361,16 +1400,24 @@ const TeacherAnalytics = ({
               </div>
             </CardContent>
           </Card>
+          </div>
         </TabsContent>
 
         <TabsContent value="table" className="space-y-4">
-          <StudentProgressTable
-            students={students}
-            lessons={lessons}
-            studentProgress={studentProgress}
-            videoProgress={videoProgress}
-            quizProgress={quizProgress}
-          />
+          <div className="flex justify-end mb-2">
+            <Button onClick={() => handleExportPDF('tab-table', 'table-stats')} variant="outline" size="sm" disabled={isExporting}>
+              <Download className="w-4 h-4 mr-2" /> تصدير التبويبة PDF
+            </Button>
+          </div>
+          <div id="tab-table" className="space-y-4 p-2 bg-transparent">
+            <StudentProgressTable
+              students={students}
+              lessons={lessons}
+              studentProgress={studentProgress}
+              videoProgress={videoProgress}
+              quizProgress={quizProgress}
+            />
+          </div>
         </TabsContent>
       </Tabs>
     </div>
