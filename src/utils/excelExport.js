@@ -1,5 +1,22 @@
 import * as XLSX from 'xlsx';
 
+const createProgressBar = (percentage) => {
+  const p = parseFloat(percentage) || 0;
+  const filled = Math.round(p / 10);
+  const empty = 10 - filled;
+  return `${'█'.repeat(filled)}${'░'.repeat(empty > 0 ? empty : 0)}  ${p.toFixed(1)}%`;
+};
+
+const getStatusBadge = (status) => {
+  switch (status) {
+    case 'ممتاز': return '🟢 ممتاز';
+    case 'جيد': return '🔵 جيد';
+    case 'متوسط': return '🟡 متوسط';
+    case 'متعثر': return '🔴 متعثر';
+    default: return '⚪ ' + (status || 'غير محدد');
+  }
+};
+
 // تصدير بيانات تقدم الطلاب إلى Excel
 export const exportStudentProgressToExcel = (students, lessons, studentProgress, analyticsData) => {
   try {
@@ -8,26 +25,28 @@ export const exportStudentProgressToExcel = (students, lessons, studentProgress,
 
     // ورقة 1: ملخص عام
     const summaryData = [
-      ['إحصائيات عامة', ''],
+      ['إحصائيات عامة', 'القيمة'],
       ['إجمالي الطلاب', analyticsData.totalStudents || 0],
       ['إجمالي الدروس', analyticsData.totalLessons || 0],
       ['الطلاب النشطين', analyticsData.activeStudents || 0],
       ['الطلاب غير النشطين', analyticsData.inactiveStudents || 0],
-      ['نسبة الإكمال العامة (%)', (analyticsData.overallCompletionRate || 0).toFixed(2)],
-      ['متوسط الدرجات العام', (analyticsData.overallAverageScore || 0).toFixed(2)],
-      ['نسبة إكمال الفيديو (%)', (analyticsData.overallVideoCompletionRate || 0).toFixed(2)],
-      ['نسبة فتح PDF (%)', (analyticsData.overallPdfOpenRate || 0).toFixed(2)],
-      ['نسبة الوصول للأسئلة (%)', (analyticsData.overallQuestionsAccessRate || 0).toFixed(2)],
+      ['نسبة الإكمال العامة', createProgressBar(analyticsData.overallCompletionRate || 0)],
+      ['متوسط الدرجات العام', `⭐ ${(analyticsData.overallAverageScore || 0).toFixed(2)}`],
+      ['نسبة إكمال الفيديو', createProgressBar(analyticsData.overallVideoCompletionRate || 0)],
+      ['نسبة فتح PDF', createProgressBar(analyticsData.overallPdfOpenRate || 0)],
+      ['نسبة الوصول للأسئلة', createProgressBar(analyticsData.overallQuestionsAccessRate || 0)],
       ['', ''],
       ['تاريخ التصدير', new Date().toLocaleString('ar-EG')]
     ];
 
     const summarySheet = XLSX.utils.aoa_to_sheet(summaryData);
+    // Adjust column widths
+    summarySheet['!cols'] = [{ wch: 30 }, { wch: 25 }];
     XLSX.utils.book_append_sheet(workbook, summarySheet, 'الملخص العام');
 
     // ورقة 2: تقدم الطلاب التفصيلي
     const studentProgressData = [
-      ['اسم الطالب', 'البريد الإلكتروني', 'الدروس المكتملة', 'إجمالي الدروس', 'نسبة التقدم (%)', 'متوسط الدرجات', 'الحالة']
+      ['اسم الطالب', 'البريد الإلكتروني', 'الدروس المكتملة', 'إجمالي الدروس', 'شريط التقدم', 'متوسط الدرجات', 'الأوسمة', 'الحالة']
     ];
 
     students.forEach(student => {
@@ -42,7 +61,7 @@ export const exportStudentProgressToExcel = (students, lessons, studentProgress,
       
       const averageScore = studentScores.length > 0 
         ? (studentScores.reduce((sum, score) => sum + score, 0) / studentScores.length).toFixed(2)
-        : 'لا توجد درجات';
+        : '0.00';
       
       const progressPercentage = lessons.length > 0 
         ? ((completedLessons / lessons.length) * 100).toFixed(2) 
@@ -58,18 +77,20 @@ export const exportStudentProgressToExcel = (students, lessons, studentProgress,
         student.email || 'غير محدد',
         completedLessons,
         lessons.length,
-        progressPercentage,
-        averageScore,
-        status
+        createProgressBar(progressPercentage),
+        `🎯 ${averageScore} نقطة`,
+        `🏆 ${completedLessons} وسام`,
+        getStatusBadge(status)
       ]);
     });
 
     const progressSheet = XLSX.utils.aoa_to_sheet(studentProgressData);
+    progressSheet['!cols'] = [{ wch: 30 }, { wch: 35 }, { wch: 15 }, { wch: 15 }, { wch: 25 }, { wch: 15 }, { wch: 15 }, { wch: 15 }];
     XLSX.utils.book_append_sheet(workbook, progressSheet, 'تقدم الطلاب');
 
     // ورقة 3: إحصائيات الدروس
     const lessonStatsData = [
-      ['رقم الدرس', 'عنوان الدرس', 'عدد الطلاب المكملين', 'إجمالي الطلاب', 'نسبة الإكمال (%)', 'متوسط الدرجات']
+      ['رقم الدرس', 'عنوان الدرس', 'عدد الطلاب المكملين', 'إجمالي الطلاب', 'نسبة الإكمال', 'متوسط الدرجات']
     ];
 
     lessons.forEach(lesson => {
@@ -83,7 +104,7 @@ export const exportStudentProgressToExcel = (students, lessons, studentProgress,
       
       const averageScore = lessonScores.length > 0 
         ? (lessonScores.reduce((sum, score) => sum + score, 0) / lessonScores.length).toFixed(2)
-        : 'لا توجد درجات';
+        : '0.00';
       
       const completionRate = students.length > 0 
         ? ((studentsCompleted / students.length) * 100).toFixed(2)
@@ -94,17 +115,18 @@ export const exportStudentProgressToExcel = (students, lessons, studentProgress,
         lesson.title || 'غير محدد',
         studentsCompleted,
         students.length,
-        completionRate,
-        averageScore
+        createProgressBar(completionRate),
+        `🎯 ${averageScore}`
       ]);
     });
 
     const lessonSheet = XLSX.utils.aoa_to_sheet(lessonStatsData);
+    lessonSheet['!cols'] = [{ wch: 15 }, { wch: 40 }, { wch: 20 }, { wch: 15 }, { wch: 25 }, { wch: 15 }];
     XLSX.utils.book_append_sheet(workbook, lessonSheet, 'إحصائيات الدروس');
 
     // ورقة 4: الطلاب المتعثرين
     const strugglingData = [
-      ['اسم الطالب', 'البريد الإلكتروني', 'نسبة التقدم (%)', 'الدروس المكتملة', 'آخر نشاط']
+      ['اسم الطالب', 'البريد الإلكتروني', 'شريط التقدم', 'الدروس المكتملة', 'الحالة']
     ];
 
     const strugglingStudents = students.filter(student => {
@@ -128,18 +150,19 @@ export const exportStudentProgressToExcel = (students, lessons, studentProgress,
       strugglingData.push([
         student.name || 'غير محدد',
         student.email || 'غير محدد',
-        progressPercentage,
+        createProgressBar(progressPercentage),
         completedLessons,
-        'غير متوفر' // يمكن إضافة تاريخ آخر نشاط لاحقاً
+        getStatusBadge('متعثر')
       ]);
     });
 
     const strugglingSheet = XLSX.utils.aoa_to_sheet(strugglingData);
+    strugglingSheet['!cols'] = [{ wch: 30 }, { wch: 35 }, { wch: 25 }, { wch: 15 }, { wch: 15 }];
     XLSX.utils.book_append_sheet(workbook, strugglingSheet, 'الطلاب المتعثرين');
 
     // ورقة 5: الطلاب المتفوقين
     const topPerformersData = [
-      ['اسم الطالب', 'البريد الإلكتروني', 'نسبة التقدم (%)', 'متوسط الدرجات', 'الدروس المكتملة']
+      ['اسم الطالب', 'البريد الإلكتروني', 'شريط التقدم', 'متوسط الدرجات', 'الدروس المكتملة', 'الأوسمة']
     ];
 
     const topPerformers = students.filter(student => {
@@ -173,18 +196,20 @@ export const exportStudentProgressToExcel = (students, lessons, studentProgress,
         .map(p => p.score);
       const averageScore = studentScores.length > 0 
         ? (studentScores.reduce((sum, score) => sum + score, 0) / studentScores.length).toFixed(2)
-        : 'لا توجد درجات';
+        : '0.00';
 
       topPerformersData.push([
         student.name || 'غير محدد',
         student.email || 'غير محدد',
-        progressPercentage,
-        averageScore,
-        completedLessons
+        createProgressBar(progressPercentage),
+        `⭐ ${averageScore}`,
+        completedLessons,
+        `🏆 ${completedLessons} وسام`
       ]);
     });
 
     const topPerformersSheet = XLSX.utils.aoa_to_sheet(topPerformersData);
+    topPerformersSheet['!cols'] = [{ wch: 30 }, { wch: 35 }, { wch: 25 }, { wch: 15 }, { wch: 15 }, { wch: 15 }];
     XLSX.utils.book_append_sheet(workbook, topPerformersSheet, 'الطلاب المتفوقين');
 
     // تصدير الملف
@@ -205,13 +230,13 @@ export const exportMediaAnalyticsToExcel = (analyticsData, events = []) => {
 
     // ورقة 1: إحصائيات الفيديو
     const videoData = [
-      ['إحصائيات الفيديو', ''],
+      ['إحصائيات الفيديو', 'القيمة'],
       ['إجمالي مرات بدء الفيديو', analyticsData.totalVideosStarted || 0],
       ['إجمالي مرات إكمال الفيديو', analyticsData.totalVideosCompleted || 0],
-      ['نسبة إكمال الفيديو (%)', (analyticsData.overallVideoCompletionRate || 0).toFixed(2)],
+      ['نسبة إكمال الفيديو', createProgressBar(analyticsData.overallVideoCompletionRate || 0)],
       ['', ''],
       ['تفاصيل الفيديوهات حسب الدرس', ''],
-      ['رقم الدرس', 'عنوان الدرس', 'مرات البدء', 'مرات الإكمال', 'نسبة الإكمال (%)']
+      ['رقم الدرس', 'عنوان الدرس', 'مرات البدء', 'مرات الإكمال', 'شريط التقدم']
     ];
 
     // إضافة بيانات الفيديو لكل درس (محاكاة)
@@ -222,22 +247,23 @@ export const exportMediaAnalyticsToExcel = (analyticsData, events = []) => {
           video.lessonTitle || 'غير محدد',
           video.starts || 0,
           video.completions || 0,
-          video.completionRate ? video.completionRate.toFixed(2) : '0.00'
+          createProgressBar(video.completionRate || 0)
         ]);
       });
     }
 
     const videoSheet = XLSX.utils.aoa_to_sheet(videoData);
+    videoSheet['!cols'] = [{ wch: 25 }, { wch: 35 }, { wch: 15 }, { wch: 15 }, { wch: 25 }];
     XLSX.utils.book_append_sheet(workbook, videoSheet, 'إحصائيات الفيديو');
 
     // ورقة 2: إحصائيات PDF
     const pdfData = [
-      ['إحصائيات ملفات PDF', ''],
+      ['إحصائيات ملفات PDF', 'القيمة'],
       ['إجمالي مرات فتح PDF', analyticsData.totalPdfsOpened || 0],
-      ['نسبة فتح PDF (%)', (analyticsData.overallPdfOpenRate || 0).toFixed(2)],
+      ['نسبة فتح PDF', createProgressBar(analyticsData.overallPdfOpenRate || 0)],
       ['', ''],
       ['تفاصيل ملفات PDF حسب الدرس', ''],
-      ['رقم الدرس', 'عنوان الدرس', 'مرات الفتح', 'عدد الطلاب الذين فتحوا', 'نسبة الفتح (%)']
+      ['رقم الدرس', 'عنوان الدرس', 'مرات الفتح', 'عدد الطلاب الذين فتحوا', 'شريط التقدم']
     ];
 
     // إضافة بيانات PDF لكل درس (محاكاة)
@@ -248,22 +274,23 @@ export const exportMediaAnalyticsToExcel = (analyticsData, events = []) => {
           pdf.lessonTitle || 'غير محدد',
           pdf.opens || 0,
           pdf.uniqueOpeners || 0,
-          pdf.openRate ? pdf.openRate.toFixed(2) : '0.00'
+          createProgressBar(pdf.openRate || 0)
         ]);
       });
     }
 
     const pdfSheet = XLSX.utils.aoa_to_sheet(pdfData);
+    pdfSheet['!cols'] = [{ wch: 25 }, { wch: 35 }, { wch: 15 }, { wch: 25 }, { wch: 25 }];
     XLSX.utils.book_append_sheet(workbook, pdfSheet, 'إحصائيات PDF');
 
     // ورقة 3: إحصائيات الأسئلة
     const questionsData = [
-      ['إحصائيات الأسئلة', ''],
+      ['إحصائيات الأسئلة', 'القيمة'],
       ['إجمالي مرات الوصول للأسئلة', analyticsData.totalQuestionsAccessed || 0],
-      ['نسبة الوصول للأسئلة (%)', (analyticsData.overallQuestionsAccessRate || 0).toFixed(2)],
+      ['نسبة الوصول للأسئلة', createProgressBar(analyticsData.overallQuestionsAccessRate || 0)],
       ['', ''],
       ['تفاصيل الأسئلة حسب الدرس', ''],
-      ['رقم الدرس', 'عنوان الدرس', 'مرات الوصول', 'عدد الطلاب', 'نسبة الوصول (%)']
+      ['رقم الدرس', 'عنوان الدرس', 'مرات الوصول', 'عدد الطلاب', 'شريط التقدم']
     ];
 
     // إضافة بيانات الأسئلة لكل درس (محاكاة)
@@ -274,12 +301,13 @@ export const exportMediaAnalyticsToExcel = (analyticsData, events = []) => {
           questions.lessonTitle || 'غير محدد',
           questions.accesses || 0,
           questions.uniqueAccessors || 0,
-          questions.accessRate ? questions.accessRate.toFixed(2) : '0.00'
+          createProgressBar(questions.accessRate || 0)
         ]);
       });
     }
 
     const questionsSheet = XLSX.utils.aoa_to_sheet(questionsData);
+    questionsSheet['!cols'] = [{ wch: 25 }, { wch: 35 }, { wch: 15 }, { wch: 15 }, { wch: 25 }];
     XLSX.utils.book_append_sheet(workbook, questionsSheet, 'إحصائيات الأسئلة');
 
     // ورقة 4: سجل الأحداث (إذا كان متوفراً)
