@@ -108,11 +108,29 @@ const StudentDashboard = memo(() => {
     );
 
     // ── User data + other real-time listeners ──
-    fetchUserData().then((fetchedUserData) => {
+    fetchUserData().then(async (fetchedUserData) => {
       if (!isMounted) return;
       if (!fetchedUserData) {
         setLoading(false);
         return;
+      }
+
+      // Fetch initial settings so it doesn't cause layout shift
+      try {
+        const settingsDocSnap = await getDoc(doc(db, 'platformSettings', 'main'));
+        if (settingsDocSnap.exists() && isMounted) {
+          const newSettings = settingsDocSnap.data();
+          setPlatformSettings(prev => ({
+            ...prev,
+            ...newSettings,
+            finalExamsList: newSettings.finalExamsList || [],
+            meetingRoomsList: newSettings.meetingRoomsList || [],
+            studentAiToolsList: newSettings.studentAiToolsList || [],
+            teacherAiToolsList: newSettings.teacherAiToolsList || []
+          }));
+        }
+      } catch (e) {
+        console.error("Error fetching initial settings:", e);
       }
 
       const progressDocRef = doc(db, 'studentProgress', currentUser.uid);

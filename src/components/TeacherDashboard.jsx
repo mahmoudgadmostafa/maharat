@@ -62,15 +62,27 @@ const TeacherDashboard = memo(() => {
       const userDocPromise = getDoc(doc(db, 'users', currentUser.uid));
       const lessonsSnapshotPromise = getDocs(collection(db, 'lessons'));
       const usersSnapshotPromise = getDocs(collection(db, 'users'));
+      const settingsDocPromise = getDoc(doc(db, 'platformSettings', 'main'));
 
-      const [userDocResult, lessonsSnapshotResult, usersSnapshotResult] = await Promise.all([
+      const [userDocResult, lessonsSnapshotResult, usersSnapshotResult, settingsDocResult] = await Promise.all([
         userDocPromise,
         lessonsSnapshotPromise,
         usersSnapshotPromise,
+        settingsDocPromise,
       ]);
 
       if (userDocResult.exists()) {
         setUserData(userDocResult.data());
+      }
+
+      if (settingsDocResult.exists()) {
+        const newSettings = settingsDocResult.data();
+        setPlatformSettings(prev => ({
+          ...prev,
+          ...newSettings,
+          finalExamsList: newSettings.finalExamsList || [],
+          meetingRoomsList: newSettings.meetingRoomsList || []
+        }));
       }
 
       const lessonsData = lessonsSnapshotResult.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (a.lessonNumber || 0) - (b.lessonNumber || 0));
@@ -477,6 +489,7 @@ const TeacherDashboard = memo(() => {
             </TabsList>
           </motion.div>
 
+        {platformSettings?.teacherAiToolsList && platformSettings.teacherAiToolsList.length > 0 && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -494,52 +507,41 @@ const TeacherDashboard = memo(() => {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4 sm:space-y-6 p-4 sm:p-6">
-                {platformSettings?.teacherAiToolsList && platformSettings.teacherAiToolsList.length > 0 ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-                    {platformSettings.teacherAiToolsList.map((tool, index) => (
-                      <motion.div
-                        key={tool.id}
-                        initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                        transition={{ delay: index * 0.1, duration: 0.4, ease: 'easeOut' }}
-                        whileHover={{ scale: 1.03 }}
-                        className="transition-transform duration-200"
-                      >
-                        <Button
-                          variant="ghost"
-                          className="w-full h-auto p-3 sm:p-5 flex items-center justify-between rounded-xl sm:rounded-2xl bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-md border border-purple-300/40 hover:border-purple-500 shadow-lg hover:shadow-xl group transition-all duration-300"
-                          onClick={() => window.open(tool.url, '_blank', 'noopener,noreferrer')}
-                        >
-                          <Brain className="w-5 h-5 sm:w-6 sm:h-6 text-purple-500 group-hover:text-purple-600 transition" />
-
-                          <div className="text-right flex-1 px-3 sm:px-4">
-                            <div className="font-bold text-sm sm:text-base text-orange-500 group-hover:text-orange-600 transition">
-                              {tool.name}
-                            </div>
-                            <p className="text-xs sm:text-sm text-green-500 group-hover:text-green-600 transition">
-                              فتح الغرفة
-                            </p>
-                          </div>
-
-                          <ExternalLink className="w-4 h-4 sm:w-5 sm:h-5 text-purple-400 group-hover:text-purple-500 transition" />
-                        </Button>
-                      </motion.div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="flex justify-center">
-                    <Button
-                      onClick={() => window.open(platformSettings.teacherAiToolsUrl || 'https://app.magicschool.ai/tools', '_blank', 'noopener,noreferrer')}
-                      className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 px-4 py-2 sm:px-6 sm:py-3 text-white rounded-lg sm:rounded-xl shadow-lg hover:shadow-xl transition duration-300 flex items-center space-x-2"
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+                  {platformSettings.teacherAiToolsList.map((tool, index) => (
+                    <motion.div
+                      key={tool.id}
+                      initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      transition={{ delay: index * 0.1, duration: 0.4, ease: 'easeOut' }}
+                      whileHover={{ scale: 1.03 }}
+                      className="transition-transform duration-200"
                     >
-                      <ExternalLink className="w-3 h-3 sm:w-4 sm:h-4 text-white" />
-                      <span className="text-sm sm:text-base font-semibold">فتح تطبيقات الذكاء الاصطناعي</span>
-                    </Button>
-                  </div>
-                )}
+                      <Button
+                        variant="ghost"
+                        className="w-full h-auto p-3 sm:p-5 flex items-center justify-between rounded-xl sm:rounded-2xl bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-md border border-purple-300/40 hover:border-purple-500 shadow-lg hover:shadow-xl group transition-all duration-300"
+                        onClick={() => window.open(tool.url, '_blank', 'noopener,noreferrer')}
+                      >
+                        <Brain className="w-5 h-5 sm:w-6 sm:h-6 text-purple-500 group-hover:text-purple-600 transition" />
+
+                        <div className="text-right flex-1 px-3 sm:px-4">
+                          <div className="font-bold text-sm sm:text-base text-orange-500 group-hover:text-orange-600 transition">
+                            {tool.name}
+                          </div>
+                          <p className="text-xs sm:text-sm text-green-500 group-hover:text-green-600 transition">
+                            فتح التطبيق
+                          </p>
+                        </div>
+
+                        <ExternalLink className="w-4 h-4 sm:w-5 sm:h-5 text-purple-400 group-hover:text-purple-500 transition" />
+                      </Button>
+                    </motion.div>
+                  ))}
+                </div>
               </CardContent>
             </Card>
           </motion.div>
+        )}
 
           <TabsContent value="content">
             <Suspense fallback={<LoadingSpinner />}>
