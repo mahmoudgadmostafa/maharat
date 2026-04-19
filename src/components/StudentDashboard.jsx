@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useCallback, memo, useMemo, Suspense, lazy } from 'react';
+import React, { useState, useEffect, memo, useMemo, Suspense, lazy } from 'react';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
-import { collection, getDocs, doc, getDoc, setDoc, updateDoc, arrayUnion, onSnapshot } from 'firebase/firestore';
+import { collection, doc, setDoc, updateDoc, arrayUnion, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { toast } from '@/components/ui/use-toast';
 import { ResourceModal } from '@/components/common/ResourceModal';
@@ -25,42 +25,44 @@ const ExamAccess = lazy(() => import('@/components/ExamAccess'));
 const StudentAchievements = lazy(() => import('./student/StudentAchievements'));
 
 const StudentDashboard = memo(() => {
-  const { logout, currentUser } = useAuth();
-  const [userData, setUserData] = useState(null);
+  const { logout, currentUser, platformSettings: ctxPlatformSettings } = useAuth();
+  // استخدام بيانات المستخدم من AuthContext مباشرة بدلاً من طلب Firestore منفصل
+  const [userData, setUserData] = useState(currentUser || null);
   const [allLessons, setAllLessons] = useState([]);
   const [selectedLesson, setSelectedLesson] = useState(null);
   const [loading, setLoading] = useState(true);
   const [studentProgress, setStudentProgress] = useState({ completedLessons: [] });
+  // استخدام platformSettings من AuthContext كقيمة ابتدائية
   const [platformSettings, setPlatformSettings] = useState({
     finalExamsList: [],
     meetingRoomsList: [],
     siteName: 'منصة مهارات التعليمية',
     studentAiToolsUrl: 'https://app.magicschool.ai/tools',
-    studentAiToolsList: [] // إضافة القائمة الأساسية
+    studentAiToolsList: [],
+    ...(ctxPlatformSettings || {})
   });
   const [modalState, setModalState] = useState({ isOpen: false, url: "", title: "", resourceType: "" });
   const [showMessaging, setShowMessaging] = useState(false);
   const { showMotivation } = useMotivation();
 
-  const fetchUserData = useCallback(async () => {
-    if (!currentUser) return null;
-    try {
-      const userDocRef = doc(db, 'users', currentUser.uid);
-      const userDocSnap = await getDoc(userDocRef);
-      if (userDocSnap.exists()) {
-        const fetchedUserData = userDocSnap.data();
-        setUserData(fetchedUserData);
-        return fetchedUserData;
-      }
-      return null;
-    } catch (error) {
-      console.error('Error fetching user data:', error);
-      toast({
-        title: "خطأ في تحميل بيانات المستخدم",
-        description: "لم نتمكن من تحميل بيانات المستخدم.",
-        variant: "destructive",
-      });
-      return null;
+  // مزامنة platformSettings من AuthContext عند تغيّرها
+  useEffect(() => {
+    if (ctxPlatformSettings) {
+      setPlatformSettings(prev => ({
+        ...prev,
+        ...ctxPlatformSettings,
+        finalExamsList: ctxPlatformSettings.finalExamsList || [],
+        meetingRoomsList: ctxPlatformSettings.meetingRoomsList || [],
+        studentAiToolsList: ctxPlatformSettings.studentAiToolsList || [],
+        teacherAiToolsList: ctxPlatformSettings.teacherAiToolsList || []
+      }));
+    }
+  }, [ctxPlatformSettings]);
+
+  // مزامنة بيانات المستخدم من AuthContext
+  useEffect(() => {
+    if (currentUser) {
+      setUserData(currentUser);
     }
   }, [currentUser]);
 
@@ -84,7 +86,9 @@ const StudentDashboard = memo(() => {
     let isMounted = true;
     setLoading(true);
 
-    // ── Real-time lessons listener (updates instantly when teacher changes visibility) ──
+    // ── تشغيل جميع الـ listeners بالتوازي دون انتظار بعضها ──
+
+    // 1. مستمع الدروس
     const unsubscribeLessons = onSnapshot(
       collection(db, 'lessons'),
       (snapshot) => {
@@ -93,7 +97,6 @@ const StudentDashboard = memo(() => {
           .map(d => ({ id: d.id, ...d.data() }))
           .sort((a, b) => (a.lessonNumber || 0) - (b.lessonNumber || 0));
         setAllLessons(lessonsData);
-        // Keep selectedLesson in sync with latest data from Firestore
         setSelectedLesson(prev => {
           if (!prev) return null;
           const updated = lessonsData.find(l => l.id === prev.id);
@@ -107,84 +110,58 @@ const StudentDashboard = memo(() => {
       }
     );
 
-    // ── User data + other real-time listeners ──
-    fetchUserData().then(async (fetchedUserData) => {
+    // 2. مستمع تقدم الطالب (يبدأ فوراً بدون انتظار fetchUserData)
+    const studentName = currentUser.name || currentUser.displayName || 'طالب';
+    const progressDocRef = doc(db, 'studentProgress', currentUser.uid);
+    const unsubscribeProgress = onSnapshot(progressDocRef, async (docSnap) => {
       if (!isMounted) return;
-      if (!fetchedUserData) {
-        setLoading(false);
-        return;
+      if (docSnap.exists()) {
+        setStudentProgress(docSnap.data());
+      } else {
+        try {
+          await setDoc(progressDocRef, { completedLessons: [], studentName });
+          setStudentProgress({ completedLessons: [], studentName });
+        } catch (e) {
+          console.error("Error setting initial student progress:", e);
+        }
       }
-
-      // Fetch initial settings so it doesn't cause layout shift
-      try {
-        const settingsDocSnap = await getDoc(doc(db, 'platformSettings', 'main'));
-        if (settingsDocSnap.exists() && isMounted) {
-          const newSettings = settingsDocSnap.data();
-          setPlatformSettings(prev => ({
-            ...prev,
-            ...newSettings,
-            finalExamsList: newSettings.finalExamsList || [],
-            meetingRoomsList: newSettings.meetingRoomsList || [],
-            studentAiToolsList: newSettings.studentAiToolsList || [],
-            teacherAiToolsList: newSettings.teacherAiToolsList || []
-          }));
-        }
-      } catch (e) {
-        console.error("Error fetching initial settings:", e);
-      }
-
-      const progressDocRef = doc(db, 'studentProgress', currentUser.uid);
-      const unsubscribeProgress = onSnapshot(progressDocRef, async (docSnap) => {
-        if (!isMounted) return;
-        if (docSnap.exists()) {
-          setStudentProgress(docSnap.data());
-        } else {
-          try {
-            await setDoc(progressDocRef, { completedLessons: [], studentName: fetchedUserData.name || 'طالب' });
-            setStudentProgress({ completedLessons: [], studentName: fetchedUserData.name || 'طالب' });
-          } catch (e) {
-            console.error("Error setting initial student progress:", e);
-          }
-        }
-      }, (error) => {
-        if (!isMounted) return;
-        console.error("Error fetching student progress:", error);
-        toast({ title: "خطأ في تحديث التقدم", variant: "destructive" });
-      });
-
-      const settingsDocRef = doc(db, 'platformSettings', 'main');
-      const unsubscribeSettings = onSnapshot(settingsDocRef, (docSnap) => {
-        if (!isMounted) return;
-        if (docSnap.exists()) {
-          const newSettings = docSnap.data();
-          setPlatformSettings(prev => ({
-            ...prev,
-            ...newSettings,
-            finalExamsList: newSettings.finalExamsList || [],
-            meetingRoomsList: newSettings.meetingRoomsList || [],
-            studentAiToolsList: newSettings.studentAiToolsList || [],
-            teacherAiToolsList: newSettings.teacherAiToolsList || []
-          }));
-        }
-      }, (error) => {
-        if (!isMounted) return;
-        console.error("Error fetching platform settings:", error);
-        toast({ title: "خطأ في تحديث إعدادات المنصة", variant: "destructive" });
-      });
-
-      setLoading(false);
-
-      return () => {
-        unsubscribeProgress();
-        unsubscribeSettings();
-      };
+    }, (error) => {
+      if (!isMounted) return;
+      console.error("Error fetching student progress:", error);
+      toast({ title: "خطأ في تحديث التقدم", variant: "destructive" });
     });
+
+    // 3. مستمع إعدادات المنصة (فقط في حال لم تكن محمّلة من AuthContext)
+    const settingsDocRef = doc(db, 'platformSettings', 'main');
+    const unsubscribeSettings = onSnapshot(settingsDocRef, (docSnap) => {
+      if (!isMounted) return;
+      if (docSnap.exists()) {
+        const newSettings = docSnap.data();
+        setPlatformSettings(prev => ({
+          ...prev,
+          ...newSettings,
+          finalExamsList: newSettings.finalExamsList || [],
+          meetingRoomsList: newSettings.meetingRoomsList || [],
+          studentAiToolsList: newSettings.studentAiToolsList || [],
+          teacherAiToolsList: newSettings.teacherAiToolsList || []
+        }));
+      }
+    }, (error) => {
+      if (!isMounted) return;
+      console.error("Error fetching platform settings:", error);
+      toast({ title: "خطأ في تحديث إعدادات المنصة", variant: "destructive" });
+    });
+
+    // إنهاء حالة التحميل فوراً بعد بدء الـ listeners
+    setLoading(false);
 
     return () => {
       isMounted = false;
       unsubscribeLessons();
+      unsubscribeProgress();
+      unsubscribeSettings();
     };
-  }, [currentUser, fetchUserData]);
+  }, [currentUser]);
 
   const availableLessons = useMemo(() => {
     if (!userData) return [];

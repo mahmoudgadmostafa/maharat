@@ -1,9 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { doc, getDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
 import { useAuth } from '@/contexts/AuthContext';
 
 const LoginForm = (props) => {
@@ -11,32 +9,12 @@ const LoginForm = (props) => {
     identifier: '',
     password: ''
   });
-  const [emailDomain, setEmailDomain] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // جلب إعدادات النطاق من Firestore
-  useEffect(() => {
-    const fetchEmailDomain = async () => {
-      try {
-        const settingsRef = doc(db, "platformSettings", "main");
-        const settingsSnap = await getDoc(settingsRef);
-
-        if (settingsSnap.exists()) {
-          setEmailDomain(settingsSnap.data()?.emailDomain || '@maharat.eg');
-        } else {
-          setEmailDomain('@maharat.eg');
-        }
-      } catch (error) {
-        console.error('خطأ في جلب إعدادات النطاق:', error);
-        setEmailDomain('@maharat.eg');
-      }
-    };
-
-    fetchEmailDomain();
-  }, []);
-
-  const { login } = useAuth();
+  // استخدام platformSettings من AuthContext مباشرة بدلاً من طلب Firestore منفصل
+  const { login, platformSettings } = useAuth();
+  const emailDomain = platformSettings?.emailDomain || '@maharat.eg';
 
   const handleChange = (e) => {
     setFormData({
@@ -117,9 +95,9 @@ const LoginForm = (props) => {
       <Button
         type="submit"
         className="w-full"
-        disabled={isLoading || !emailDomain}
+        disabled={isLoading}
       >
-        {isLoading ? 'جاري تسجيل الدخول...' : 'تسجيل الدخول'}
+      {isLoading ? 'جاري تسجيل الدخول...' : 'تسجيل الدخول'}
       </Button>
     </form>
   );
